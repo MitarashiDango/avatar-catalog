@@ -1,0 +1,19 @@
+{
+  "name": "com.matcha-soft.avatar-catalog",
+  "version": "0.0.1",
+  "displayName": "Avatar Catalog",
+  "description": "",
+  "unity": "2022.3",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "licensesUrl": "",
+  "vpmDependencies": {
+    "com.vrchat.avatars": ">=3.7.4"
+  },
+  "keywords": [],
+  "author": {
+    "name": "MitarashiDango",
+    "email": "mitarashi_dango@mail.matcha-soft.com",
+    "url": "https://matcha-soft.com"
+  }
+}
