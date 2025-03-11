@@ -11,10 +11,10 @@ namespace MitarashiDango.AvatarCatalog
     {
         private AvatarRenderer _avatarRenderer;
         private List<AvatarListItem> _avatarListItems = new List<AvatarListItem>();
-        private int imageSize = 192;
-        private int padding = 10;
-        private int columns = 3;
-        private Vector2 scrollPosition;
+        private int _imageSize = 192;
+        private int _padding = 10;
+        private int _columns = 3;
+        private Vector2 _scrollPosition;
 
         [MenuItem("Tools/Avatar Catalog/Avatar List")]
         public static void ShowWindow()
@@ -66,9 +66,9 @@ namespace MitarashiDango.AvatarCatalog
                 var avatarDescriptor = avatarListItem.Avatar.GetComponent<VRCAvatarDescriptor>();
                 var cameraPosition = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
 
-                _avatarRenderer.CameraPosition = cameraPosition;
-                _avatarRenderer.CameraRotation = Quaternion.Euler(0, 180, 0);
-                _avatarRenderer.CameraScale = new Vector3(1, 1, 1);
+                _avatarRenderer.cameraPosition = cameraPosition;
+                _avatarRenderer.cameraRotation = Quaternion.Euler(0, 180, 0);
+                _avatarRenderer.cameraScale = new Vector3(1, 1, 1);
 
                 avatarListItem.Thumbnail = _avatarRenderer.Render(avatarListItem.Avatar, 256, 256, null, null, false);
             }
@@ -83,27 +83,27 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             // ウィンドウ幅に基づいて列数を決定（最大サイズ192x192）
-            columns = Mathf.Max(1, (int)(position.width / (imageSize + padding)));
-            imageSize = Mathf.Min(192, (int)(position.width / columns) - padding); // サイズ制限
+            _columns = Mathf.Max(1, (int)(position.width / (_imageSize + _padding)));
+            _imageSize = Mathf.Min(192, (int)(position.width / _columns) - _padding); // サイズ制限
 
-            int rows = Mathf.CeilToInt((float)_avatarListItems.Count / columns);
+            int rows = Mathf.CeilToInt((float)_avatarListItems.Count / _columns);
 
-            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
             for (int row = 0; row < rows; row++)
             {
                 EditorGUILayout.BeginHorizontal();
 
-                for (int col = 0; col < columns; col++)
+                for (int col = 0; col < _columns; col++)
                 {
-                    int index = row * columns + col;
+                    int index = row * _columns + col;
                     if (index >= _avatarListItems.Count)
                     {
                         break;
                     }
 
                     // 画像＋テキストを1つのボタンとしてラップ
-                    if (GUILayout.Button("", GUILayout.Width(imageSize), GUILayout.Height(imageSize + 20)))
+                    if (GUILayout.Button("", GUILayout.Width(_imageSize), GUILayout.Height(_imageSize + 20)))
                     {
                         Debug.Log("Selected: " + _avatarListItems[index].Avatar.name);
                         for (var i = 0; i < _avatarListItems.Count; i++)
@@ -120,7 +120,7 @@ namespace MitarashiDango.AvatarCatalog
                     }
 
                     Rect lastRect = GUILayoutUtility.GetLastRect();
-                    GUI.DrawTexture(new Rect(lastRect.x, lastRect.y, imageSize, imageSize), _avatarListItems[index].Thumbnail, ScaleMode.ScaleToFit);
+                    GUI.DrawTexture(new Rect(lastRect.x, lastRect.y, _imageSize, _imageSize), _avatarListItems[index].Thumbnail, ScaleMode.ScaleToFit);
 
                     GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
                     {
@@ -128,7 +128,7 @@ namespace MitarashiDango.AvatarCatalog
                         wordWrap = true
                     };
 
-                    GUI.Label(new Rect(lastRect.x, lastRect.y + imageSize, imageSize, 20), _avatarListItems[index].Avatar.name, labelStyle);
+                    GUI.Label(new Rect(lastRect.x, lastRect.y + _imageSize, _imageSize, 20), _avatarListItems[index].Avatar.name, labelStyle);
                 }
 
                 EditorGUILayout.EndHorizontal();

@@ -9,12 +9,12 @@ namespace MitarashiDango.AvatarCatalog
     {
         private PreviewRenderUtility _previewRenderUtility;
 
-        public Vector3 CameraScale;
-        public Vector3 CameraPosition;
-        public Quaternion CameraRotation;
-        public Color BackgroundColor;
+        public Vector3 cameraScale;
+        public Vector3 cameraPosition;
+        public Quaternion cameraRotation;
+        public Color backgroundColor;
 
-        public RenderTexture RenderTexture { get; private set; }
+        public RenderTexture renderTexture { get; private set; }
 
         public AvatarRenderer()
         {
@@ -129,16 +129,16 @@ namespace MitarashiDango.AvatarCatalog
 
         public void ResetCameraSettings()
         {
-            CameraScale = new Vector3(1, 1, 1);
-            CameraPosition = new Vector3(0, 0, 0);
-            CameraRotation = Quaternion.Euler(0, 0, 0);
-            BackgroundColor = Color.white;
+            cameraScale = new Vector3(1, 1, 1);
+            cameraPosition = new Vector3(0, 0, 0);
+            cameraRotation = Quaternion.Euler(0, 0, 0);
+            backgroundColor = Color.white;
         }
 
         private void SetupCamera(RenderTexture renderTexture, bool allowHDR)
         {
             _previewRenderUtility.camera.clearFlags = CameraClearFlags.SolidColor;
-            _previewRenderUtility.camera.backgroundColor = BackgroundColor;
+            _previewRenderUtility.camera.backgroundColor = backgroundColor;
             _previewRenderUtility.camera.depth = -1;
             _previewRenderUtility.camera.useOcclusionCulling = true;
             _previewRenderUtility.camera.allowMSAA = true;
@@ -148,9 +148,9 @@ namespace MitarashiDango.AvatarCatalog
             _previewRenderUtility.camera.stereoConvergence = 10;
             _previewRenderUtility.camera.farClipPlane = 100;
             _previewRenderUtility.camera.nearClipPlane = 0.001f;
-            _previewRenderUtility.camera.transform.localScale = CameraScale;
-            _previewRenderUtility.camera.transform.position = CameraPosition;
-            _previewRenderUtility.camera.transform.rotation = CameraRotation;
+            _previewRenderUtility.camera.transform.localScale = cameraScale;
+            _previewRenderUtility.camera.transform.position = cameraPosition;
+            _previewRenderUtility.camera.transform.rotation = cameraRotation;
             _previewRenderUtility.camera.targetTexture = renderTexture;
             _previewRenderUtility.camera.pixelRect = new Rect(0, 0, renderTexture.width, renderTexture.height);
         }
