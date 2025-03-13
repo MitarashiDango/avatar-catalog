@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VRC.SDK3.Avatars.Components;
@@ -15,6 +17,8 @@ namespace MitarashiDango.AvatarCatalog
         private int _padding = 10;
         private int _columns = 3;
         private Vector2 _scrollPosition;
+        private AvatarCatalog _avatarCatalog;
+        private AvatarThumbnailCacheDatabase _avatarThumbnailCacheDatabase;
 
         [MenuItem("Tools/Avatar Catalog/Avatar List")]
         public static void ShowWindow()
@@ -25,6 +29,9 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnEnable()
         {
+            CreateFolders();
+            CreateOrLoadAssetFiles();
+
             RefreshAvatars();
         }
 
@@ -44,13 +51,32 @@ namespace MitarashiDango.AvatarCatalog
             _avatarRenderer = new AvatarRenderer();
         }
 
+        private void CreateFolders()
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog"))
+            {
+                AssetDatabase.CreateFolder("Assets", "AvatarCatalog");
+            }
+
+            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog/Cache"))
+            {
+                AssetDatabase.CreateFolder("Assets/AvatarCatalog", "Cache");
+            }
+
+            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog/Cache/AvatarThumbnail"))
+            {
+                AssetDatabase.CreateFolder("Assets/AvatarCatalog/Cache", "AvatarThumbnail");
+            }
+        }
+
+        private void CreateOrLoadAssetFiles()
+        {
+            _avatarCatalog = AvatarCatalog.CreateOrLoad();
+            _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.CreateOrLoad();
+        }
+
         private void RefreshAvatars()
         {
-            var rootObjects = SceneManager.GetActiveScene().GetRootGameObjects();
-
-            _avatarListItems.Clear();
-            _avatarListItems.AddRange(rootObjects.Where(o => o != null && o.GetComponent<VRCAvatarDescriptor>() != null).Select(avatar => new AvatarListItem(avatar)));
-
             // TODO 設定で調整可能にする
             // MEMO 設定の持たせ方は要検討
             var xOffset = 0f;
@@ -60,17 +86,92 @@ namespace MitarashiDango.AvatarCatalog
 
             InitializeAvatarRenderer();
 
-            // TODO 画像をキャッシュするようにする
-            foreach (var avatarListItem in _avatarListItems)
+            _avatarListItems.Clear();
+            _avatarCatalog.Clear();
+
+            var scenes = GetAllScenes();
+            for (var i = 0; i < scenes.Count; i++)
             {
-                var avatarDescriptor = avatarListItem.Avatar.GetComponent<VRCAvatarDescriptor>();
-                var cameraPosition = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
+                var scenePath = AssetDatabase.GetAssetPath(scenes[i]);
+                var currentScene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
 
-                _avatarRenderer.cameraPosition = cameraPosition;
-                _avatarRenderer.cameraRotation = Quaternion.Euler(0, 180, 0);
-                _avatarRenderer.cameraScale = new Vector3(1, 1, 1);
+                var currentSceneRootObjects = currentScene.GetRootGameObjects();
+                var avatarObjects = currentSceneRootObjects.Where(o => o != null && o.GetComponent<VRCAvatarDescriptor>() != null);
 
-                avatarListItem.Thumbnail = _avatarRenderer.Render(avatarListItem.Avatar, 256, 256, null, null, false);
+                foreach (var avatarObject in avatarObjects)
+                {
+                    var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
+                    var avatar = new AvatarCatalog.Avatar(scenes[i], avatarObject);
+                    _avatarCatalog.AddAvatar(avatar);
+
+                    if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
+                    {
+                        Debug.LogWarning("Failed to parse GlobalObjectId");
+                        continue;
+                    }
+
+                    var avatarListItem = new AvatarListItem(scenes[i], avatarObject);
+                    _avatarListItems.Add(avatarListItem);
+
+                    if (_avatarThumbnailCacheDatabase.IsExists(avatarGlobalObjectId))
+                    {
+                        continue;
+                    }
+
+                    var cameraPosition = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
+
+                    _avatarRenderer.cameraPosition = cameraPosition;
+                    _avatarRenderer.cameraRotation = Quaternion.Euler(0, 180, 0);
+                    _avatarRenderer.cameraScale = new Vector3(1, 1, 1);
+
+
+                    // TODO 画像をキャッシュするようにする
+                    var thumbnail = _avatarRenderer.Render(avatarObject, 256, 256, null, null, false);
+                    thumbnail = _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
+                    avatarListItem.thumbnailGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(thumbnail).ToString();
+
+                }
+
+                if (currentScene != EditorSceneManager.GetActiveScene())
+                {
+                    EditorSceneManager.CloseScene(currentScene, true);
+                }
+            }
+
+            _avatarCatalog.Save();
+            _avatarThumbnailCacheDatabase.Save();
+        }
+
+        private void ChangeSelectingObject(GameObject obj)
+        {
+            if (obj.scene.isLoaded)
+            {
+                var gameObjects = EditorSceneManager.GetActiveScene().GetRootGameObjects()
+                    .Where(o => o != null && o.GetComponent<VRCAvatarDescriptor>() != null).ToList();
+
+                foreach (var currentGameObject in gameObjects)
+                {
+                    if (obj != currentGameObject)
+                    {
+                        if (currentGameObject.activeSelf)
+                        {
+                            currentGameObject.SetActive(false);
+                        }
+                    }
+                    else
+                    {
+                        if (!currentGameObject.activeSelf)
+                        {
+                            currentGameObject.SetActive(true);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var gid = GlobalObjectId.GetGlobalObjectIdSlow(obj);
+                var path = AssetDatabase.GUIDToAssetPath(gid.assetGUID.ToString());
+                EditorSceneManager.OpenScene(path);
             }
         }
 
@@ -86,17 +187,17 @@ namespace MitarashiDango.AvatarCatalog
             _columns = Mathf.Max(1, (int)(position.width / (_imageSize + _padding)));
             _imageSize = Mathf.Min(192, (int)(position.width / _columns) - _padding); // サイズ制限
 
-            int rows = Mathf.CeilToInt((float)_avatarListItems.Count / _columns);
+            var rows = Mathf.CeilToInt((float)_avatarListItems.Count / _columns);
 
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
-            for (int row = 0; row < rows; row++)
+            for (var row = 0; row < rows; row++)
             {
                 EditorGUILayout.BeginHorizontal();
 
-                for (int col = 0; col < _columns; col++)
+                for (var col = 0; col < _columns; col++)
                 {
-                    int index = row * _columns + col;
+                    var index = row * _columns + col;
                     if (index >= _avatarListItems.Count)
                     {
                         break;
@@ -105,22 +206,26 @@ namespace MitarashiDango.AvatarCatalog
                     // 画像＋テキストを1つのボタンとしてラップ
                     if (GUILayout.Button("", GUILayout.Width(_imageSize), GUILayout.Height(_imageSize + 20)))
                     {
-                        Debug.Log("Selected: " + _avatarListItems[index].Avatar.name);
-                        for (var i = 0; i < _avatarListItems.Count; i++)
+                        var currentAvatarListItem = _avatarListItems[index];
+                        var scenePath = AssetDatabase.GetAssetPath(currentAvatarListItem.scene);
+                        Scene scene = SceneManager.GetSceneByPath(scenePath);
+                        if (!scene.isLoaded)
                         {
-                            if (index == i)
-                            {
-                                _avatarListItems[i].Avatar.SetActive(true);
-                            }
-                            else if (_avatarListItems[i].Avatar.activeSelf)
-                            {
-                                _avatarListItems[i].Avatar.SetActive(false);
-                            }
+                            scene = EditorSceneManager.OpenScene(scenePath);
                         }
+
+                        var obj = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(currentAvatarListItem.avatarGlobalObjectId) as GameObject;
+
+                        Debug.Log("Selected: " + obj.name);
+                        ChangeSelectingObject(obj);
                     }
 
                     Rect lastRect = GUILayoutUtility.GetLastRect();
-                    GUI.DrawTexture(new Rect(lastRect.x, lastRect.y, _imageSize, _imageSize), _avatarListItems[index].Thumbnail, ScaleMode.ScaleToFit);
+                    var thumbnailTexture = _avatarThumbnailCacheDatabase.TryGetCachedAvatarThumbnailImage(_avatarListItems[index].avatarGlobalObjectId);
+                    if (thumbnailTexture != null)
+                    {
+                        GUI.DrawTexture(new Rect(lastRect.x, lastRect.y, _imageSize, _imageSize), thumbnailTexture, ScaleMode.ScaleToFit);
+                    }
 
                     GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
                     {
@@ -128,7 +233,7 @@ namespace MitarashiDango.AvatarCatalog
                         wordWrap = true
                     };
 
-                    GUI.Label(new Rect(lastRect.x, lastRect.y + _imageSize, _imageSize, 20), _avatarListItems[index].Avatar.name, labelStyle);
+                    GUI.Label(new Rect(lastRect.x, lastRect.y + _imageSize, _imageSize, 20), _avatarListItems[index].avatarName, labelStyle);
                 }
 
                 EditorGUILayout.EndHorizontal();
@@ -143,14 +248,27 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
+        private List<SceneAsset> GetAllScenes()
+        {
+            return AssetDatabase.FindAssets("t:SceneAsset", new[] { "Assets" })
+                .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
+                .Select(path => AssetDatabase.LoadAssetAtPath<SceneAsset>(path))
+                .Where(asset => asset != null)
+                .ToList();
+        }
+
         internal class AvatarListItem
         {
-            public GameObject Avatar { get; set; }
-            public Texture2D Thumbnail { get; set; }
+            public string avatarName { get; set; }
+            public SceneAsset scene { get; set; }
+            public GlobalObjectId avatarGlobalObjectId { get; set; }
+            public string thumbnailGlobalObjectId { get; set; }
 
-            public AvatarListItem(GameObject avatar)
+            public AvatarListItem(SceneAsset sceneAsset, GameObject avatar)
             {
-                Avatar = avatar;
+                scene = sceneAsset;
+                avatarName = avatar.name;
+                avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatar);
             }
         }
     }
