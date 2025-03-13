@@ -13,7 +13,11 @@ namespace MitarashiDango.AvatarCatalog
 
         [SerializeField]
         private List<Avatar> _avatars = new List<Avatar>();
-        public List<Avatar> avatars { get; private set; }
+        public List<Avatar> avatars
+        {
+            get => _avatars;
+            private set => _avatars = value;
+        }
 
         public bool IsExists(GameObject avatar)
         {

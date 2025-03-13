@@ -14,7 +14,6 @@ namespace MitarashiDango.AvatarCatalog
 
         [SerializeField]
         private List<CachedAvatarThumbnail> _thumbnails = new List<CachedAvatarThumbnail>();
-        public Dictionary<string, string> thumbnails { get; private set; }
 
         public Texture2D StoreAvatarThumbnailImage(GlobalObjectId avatarGlobalObjectId, Texture2D texture)
         {

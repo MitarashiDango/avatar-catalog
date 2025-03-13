@@ -12,7 +12,6 @@ namespace MitarashiDango.AvatarCatalog
     public class AvatarCatalogWindow : EditorWindow
     {
         private AvatarRenderer _avatarRenderer;
-        private List<AvatarListItem> _avatarListItems = new List<AvatarListItem>();
         private int _imageSize = 192;
         private int _padding = 10;
         private int _columns = 3;
@@ -32,7 +31,7 @@ namespace MitarashiDango.AvatarCatalog
             CreateFolders();
             CreateOrLoadAssetFiles();
 
-            RefreshAvatars();
+            // RefreshAvatars();
         }
 
         private void OnDisable()
@@ -84,9 +83,9 @@ namespace MitarashiDango.AvatarCatalog
             var zOffset = 5.2f;
             var backgroundColor = Color.white;
 
+            CreateOrLoadAssetFiles();
             InitializeAvatarRenderer();
 
-            _avatarListItems.Clear();
             _avatarCatalog.Clear();
 
             var scenes = GetAllScenes();
@@ -103,15 +102,13 @@ namespace MitarashiDango.AvatarCatalog
                     var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
                     var avatar = new AvatarCatalog.Avatar(scenes[i], avatarObject);
                     _avatarCatalog.AddAvatar(avatar);
+                    EditorUtility.SetDirty(_avatarCatalog);
 
                     if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
                     {
                         Debug.LogWarning("Failed to parse GlobalObjectId");
                         continue;
                     }
-
-                    var avatarListItem = new AvatarListItem(scenes[i], avatarObject);
-                    _avatarListItems.Add(avatarListItem);
 
                     if (_avatarThumbnailCacheDatabase.IsExists(avatarGlobalObjectId))
                     {
@@ -128,8 +125,7 @@ namespace MitarashiDango.AvatarCatalog
                     // TODO 画像をキャッシュするようにする
                     var thumbnail = _avatarRenderer.Render(avatarObject, 256, 256, null, null, false);
                     thumbnail = _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
-                    avatarListItem.thumbnailGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(thumbnail).ToString();
-
+                    EditorUtility.SetDirty(_avatarThumbnailCacheDatabase);
                 }
 
                 if (currentScene != EditorSceneManager.GetActiveScene())
@@ -138,8 +134,9 @@ namespace MitarashiDango.AvatarCatalog
                 }
             }
 
-            _avatarCatalog.Save();
-            _avatarThumbnailCacheDatabase.Save();
+            AssetDatabase.SaveAssets();
+
+            CreateOrLoadAssetFiles();
         }
 
         private void ChangeSelectingObject(GameObject obj)
@@ -177,9 +174,21 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnGUI()
         {
-            if (_avatarListItems.Count == 0)
+            if (_avatarCatalog == null)
+            {
+                CreateOrLoadAssetFiles();
+            }
+
+            if (_avatarCatalog.avatars.Count == 0)
             {
                 EditorGUILayout.LabelField("No avatars found.");
+
+                if (GUILayout.Button("Reload Avatars"))
+                {
+                    RefreshAvatars();
+                    Repaint();
+                }
+
                 return;
             }
 
@@ -187,7 +196,7 @@ namespace MitarashiDango.AvatarCatalog
             _columns = Mathf.Max(1, (int)(position.width / (_imageSize + _padding)));
             _imageSize = Mathf.Min(192, (int)(position.width / _columns) - _padding); // サイズ制限
 
-            var rows = Mathf.CeilToInt((float)_avatarListItems.Count / _columns);
+            var rows = Mathf.CeilToInt((float)_avatarCatalog.avatars.Count / _columns);
 
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
@@ -198,30 +207,36 @@ namespace MitarashiDango.AvatarCatalog
                 for (var col = 0; col < _columns; col++)
                 {
                     var index = row * _columns + col;
-                    if (index >= _avatarListItems.Count)
+                    if (index >= _avatarCatalog.avatars.Count)
                     {
                         break;
+                    }
+
+                    var currentAvatar = _avatarCatalog.avatars[index];
+                    if (!GlobalObjectId.TryParse(currentAvatar.globalObjectId, out var avatarGlobalObjectId))
+                    {
+                        Debug.LogWarning("failed to try parse avatar GlobalObjectId");
+                        continue;
                     }
 
                     // 画像＋テキストを1つのボタンとしてラップ
                     if (GUILayout.Button("", GUILayout.Width(_imageSize), GUILayout.Height(_imageSize + 20)))
                     {
-                        var currentAvatarListItem = _avatarListItems[index];
-                        var scenePath = AssetDatabase.GetAssetPath(currentAvatarListItem.scene);
+                        var scenePath = AssetDatabase.GetAssetPath(currentAvatar.sceneAsset);
                         Scene scene = SceneManager.GetSceneByPath(scenePath);
                         if (!scene.isLoaded)
                         {
                             scene = EditorSceneManager.OpenScene(scenePath);
                         }
 
-                        var obj = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(currentAvatarListItem.avatarGlobalObjectId) as GameObject;
+                        var obj = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
 
                         Debug.Log("Selected: " + obj.name);
                         ChangeSelectingObject(obj);
                     }
 
                     Rect lastRect = GUILayoutUtility.GetLastRect();
-                    var thumbnailTexture = _avatarThumbnailCacheDatabase.TryGetCachedAvatarThumbnailImage(_avatarListItems[index].avatarGlobalObjectId);
+                    var thumbnailTexture = _avatarThumbnailCacheDatabase.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
                     if (thumbnailTexture != null)
                     {
                         GUI.DrawTexture(new Rect(lastRect.x, lastRect.y, _imageSize, _imageSize), thumbnailTexture, ScaleMode.ScaleToFit);
@@ -233,7 +248,7 @@ namespace MitarashiDango.AvatarCatalog
                         wordWrap = true
                     };
 
-                    GUI.Label(new Rect(lastRect.x, lastRect.y + _imageSize, _imageSize, 20), _avatarListItems[index].avatarName, labelStyle);
+                    GUI.Label(new Rect(lastRect.x, lastRect.y + _imageSize, _imageSize, 20), currentAvatar.avatarName, labelStyle);
                 }
 
                 EditorGUILayout.EndHorizontal();
