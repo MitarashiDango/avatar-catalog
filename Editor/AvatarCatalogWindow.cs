@@ -139,37 +139,56 @@ namespace MitarashiDango.AvatarCatalog
             CreateOrLoadAssetFiles();
         }
 
-        private void ChangeSelectingObject(GameObject obj)
+        private GameObject ChangeSelectingObject(AvatarCatalog.Avatar avatar)
         {
-            if (obj.scene.isLoaded)
+            if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
             {
-                var gameObjects = EditorSceneManager.GetActiveScene().GetRootGameObjects()
-                    .Where(o => o != null && o.GetComponent<VRCAvatarDescriptor>() != null).ToList();
+                Debug.LogWarning("failed to try parse avatar GlobalObjectId");
+                return null;
+            }
 
-                foreach (var currentGameObject in gameObjects)
+            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            if (!scene.isLoaded)
+            {
+                if (!EditorSceneManager.SaveOpenScenes())
                 {
-                    if (obj != currentGameObject)
+                    Debug.Log("failed to save open scene");
+                    return null;
+                }
+
+                scene = EditorSceneManager.OpenScene(scenePath);
+            }
+
+            var targetAvatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
+            if (targetAvatarObject == null)
+            {
+                Debug.Log("failed to find avatar object");
+                return null;
+            }
+
+            var avatarObjects = scene.GetRootGameObjects()
+                .Where(o => o != null && o.GetComponent<VRCAvatarDescriptor>() != null).ToList();
+
+            foreach (var avatarObject in avatarObjects)
+            {
+                if (targetAvatarObject != avatarObject)
+                {
+                    if (avatarObject.activeSelf)
                     {
-                        if (currentGameObject.activeSelf)
-                        {
-                            currentGameObject.SetActive(false);
-                        }
+                        avatarObject.SetActive(false);
                     }
-                    else
+                }
+                else
+                {
+                    if (!avatarObject.activeSelf)
                     {
-                        if (!currentGameObject.activeSelf)
-                        {
-                            currentGameObject.SetActive(true);
-                        }
+                        avatarObject.SetActive(true);
                     }
                 }
             }
-            else
-            {
-                var gid = GlobalObjectId.GetGlobalObjectIdSlow(obj);
-                var path = AssetDatabase.GUIDToAssetPath(gid.assetGUID.ToString());
-                EditorSceneManager.OpenScene(path);
-            }
+
+            return targetAvatarObject;
         }
 
         private void OnGUI()
@@ -222,17 +241,11 @@ namespace MitarashiDango.AvatarCatalog
                     // 画像＋テキストを1つのボタンとしてラップ
                     if (GUILayout.Button("", GUILayout.Width(_imageSize), GUILayout.Height(_imageSize + 20)))
                     {
-                        var scenePath = AssetDatabase.GetAssetPath(currentAvatar.sceneAsset);
-                        Scene scene = SceneManager.GetSceneByPath(scenePath);
-                        if (!scene.isLoaded)
+                        var avatarObject = ChangeSelectingObject(currentAvatar);
+                        if (avatarObject != null)
                         {
-                            scene = EditorSceneManager.OpenScene(scenePath);
+                            Debug.Log("Selected: " + avatarObject.name);
                         }
-
-                        var obj = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
-
-                        Debug.Log("Selected: " + obj.name);
-                        ChangeSelectingObject(obj);
                     }
 
                     Rect lastRect = GUILayoutUtility.GetLastRect();
