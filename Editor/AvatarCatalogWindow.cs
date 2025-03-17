@@ -193,6 +193,12 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnGUI()
         {
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorGUILayout.HelpBox("Play Modeまたはビルド中は操作できません", MessageType.Info);
+                return;
+            }
+
             if (_avatarCatalog == null)
             {
                 CreateOrLoadAssetFiles();
