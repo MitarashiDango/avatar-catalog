@@ -180,12 +180,9 @@ namespace MitarashiDango.AvatarCatalog
                         avatarObject.SetActive(false);
                     }
                 }
-                else
+                else if (!avatarObject.activeSelf)
                 {
-                    if (!avatarObject.activeSelf)
-                    {
-                        avatarObject.SetActive(true);
-                    }
+                    avatarObject.SetActive(true);
                 }
             }
 
