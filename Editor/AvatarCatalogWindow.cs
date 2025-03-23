@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -121,8 +120,6 @@ namespace MitarashiDango.AvatarCatalog
                     _avatarRenderer.cameraRotation = Quaternion.Euler(0, 180, 0);
                     _avatarRenderer.cameraScale = new Vector3(1, 1, 1);
 
-
-                    // TODO 画像をキャッシュするようにする
                     var thumbnail = _avatarRenderer.Render(avatarObject, 256, 256, null, null, false);
                     thumbnail = _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
                     EditorUtility.SetDirty(_avatarThumbnailCacheDatabase);
@@ -217,7 +214,7 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            // ウィンドウ幅に基づいて列数を決定（最大サイズ192x192）
+            // ウィンドウ幅に基づいて列数を決定
             _columns = Mathf.Max(1, (int)(position.width / (_imageSize + _padding)));
             _imageSize = Mathf.Min(192, (int)(position.width / _columns) - _padding); // サイズ制限
 
@@ -244,7 +241,6 @@ namespace MitarashiDango.AvatarCatalog
                         continue;
                     }
 
-                    // 画像＋テキストを1つのボタンとしてラップ
                     if (GUILayout.Button("", GUILayout.Width(_imageSize), GUILayout.Height(_imageSize + 20)))
                     {
                         var avatarObject = ChangeSelectingObject(currentAvatar);
