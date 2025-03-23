@@ -14,6 +14,7 @@ namespace MitarashiDango.AvatarCatalog
         private GameObject _gameObject;
         private RenderTexture _renderTexture;
         private AnimationClip _animationClip;
+        private AvatarRenderer.CameraSetting _cameraSetting = new AvatarRenderer.CameraSetting();
 
         private Dictionary<string, float> _defaultBlendShapes = new Dictionary<string, float>();
         private Dictionary<string, float> _animationClipBlendShapes = new Dictionary<string, float>();
@@ -126,7 +127,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 var storagePath = Application.dataPath + "/" + "test.png";
 
-                var texture = _avatarRenderer.Render(_gameObject, 512, 512, _defaultBlendShapes, _animationClipBlendShapes, false);
+                var texture = _avatarRenderer.Render(_gameObject, _cameraSetting, 512, 512, _defaultBlendShapes, _animationClipBlendShapes, false);
 
                 var png = texture.EncodeToPNG();
                 File.WriteAllBytes(storagePath, png);
@@ -155,10 +156,10 @@ namespace MitarashiDango.AvatarCatalog
             var avatarDescriptor = _gameObject.GetComponent<VRCAvatarDescriptor>();
             if (avatarDescriptor != null)
             {
-                _avatarRenderer.backgroundColor = backgroundColor;
-                _avatarRenderer.cameraPosition = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
-                _avatarRenderer.cameraRotation = Quaternion.Euler(0, 180, 0);
-                _avatarRenderer.cameraScale = new Vector3(1, 1, 1);
+                _cameraSetting.BackgroundColor = backgroundColor;
+                _cameraSetting.Position = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
+                _cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
+                _cameraSetting.Scale = new Vector3(1, 1, 1);
             }
 
             if (_renderTexture != null)
@@ -173,7 +174,7 @@ namespace MitarashiDango.AvatarCatalog
                 _renderTexture.hideFlags = HideFlags.HideAndDontSave;
             }
 
-            _avatarRenderer.Render(_gameObject, _renderTexture, _defaultBlendShapes, _animationClipBlendShapes, false);
+            _avatarRenderer.Render(_gameObject, _cameraSetting, _renderTexture, _defaultBlendShapes, _animationClipBlendShapes, false);
         }
 
         public void storeDefaultBlendShapes(GameObject go)

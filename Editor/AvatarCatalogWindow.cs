@@ -118,13 +118,12 @@ namespace MitarashiDango.AvatarCatalog
                         continue;
                     }
 
-                    var cameraPosition = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
+                    var cameraSetting = new AvatarRenderer.CameraSetting();
+                    cameraSetting.Position = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
+                    cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
+                    cameraSetting.Scale = new Vector3(1, 1, 1);
 
-                    _avatarRenderer.cameraPosition = cameraPosition;
-                    _avatarRenderer.cameraRotation = Quaternion.Euler(0, 180, 0);
-                    _avatarRenderer.cameraScale = new Vector3(1, 1, 1);
-
-                    var thumbnail = _avatarRenderer.Render(avatarObject, 256, 256, null, null, false);
+                    var thumbnail = _avatarRenderer.Render(avatarObject, cameraSetting, 256, 256, null, null, false);
                     thumbnail = _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
                     EditorUtility.SetDirty(_avatarThumbnailCacheDatabase);
                 }
