@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 86bc2ebbee5eef54b9b2987dc5e60a6f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - m_ViewDataDictionary: {instanceID: 0}
+  - _avatarListItemTemplate: {fileID: 9197481963319205126, guid: 49f37a7319ad26d439d28fb7afe88306,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
