@@ -24,7 +24,7 @@ namespace MitarashiDango.AvatarCatalog
         private float _zOffset = 3f;
         private Color _backgroundColor = Color.white;
 
-        [MenuItem("Window/Avatar Catalog/Avatar Preview")]
+        [MenuItem("Tools/Avatar Catalog/Avatar Preview")]
         internal static void OpenWindow()
         {
             var window = GetWindow<AvatarPreviewWindow>("Avatar Preview");

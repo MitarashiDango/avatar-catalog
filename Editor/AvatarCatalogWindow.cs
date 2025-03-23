@@ -18,10 +18,10 @@ namespace MitarashiDango.AvatarCatalog
         private AvatarCatalog _avatarCatalog;
         private AvatarThumbnailCacheDatabase _avatarThumbnailCacheDatabase;
 
-        [MenuItem("Tools/Avatar Catalog/Avatar List")]
+        [MenuItem("Tools/Avatar Catalog/Avatars List")]
         public static void ShowWindow()
         {
-            var window = GetWindow<AvatarCatalogWindow>("Avatar List");
+            var window = GetWindow<AvatarCatalogWindow>("Avatars List");
             window.minSize = new Vector2(800, 600);
         }
 
@@ -207,8 +207,7 @@ namespace MitarashiDango.AvatarCatalog
 
                 if (GUILayout.Button("初回セットアップする"))
                 {
-                    RefreshAvatars();
-                    Repaint();
+                    OnFirstTimeSetupButton_Click();
                 }
 
                 return;
@@ -220,8 +219,7 @@ namespace MitarashiDango.AvatarCatalog
 
                 if (GUILayout.Button("アバター再読み込み"))
                 {
-                    RefreshAvatars();
-                    Repaint();
+                    OnReloadAvatarListButton_Click();
                 }
 
                 return;
@@ -256,11 +254,7 @@ namespace MitarashiDango.AvatarCatalog
 
                     if (GUILayout.Button("", GUILayout.Width(_imageSize), GUILayout.Height(_imageSize + 20)))
                     {
-                        var avatarObject = ChangeSelectingObject(currentAvatar);
-                        if (avatarObject != null)
-                        {
-                            Debug.Log("Selected: " + avatarObject.name);
-                        }
+                        OnAvatarItem_Click(currentAvatar);
                     }
 
                     Rect lastRect = GUILayoutUtility.GetLastRect();
@@ -286,8 +280,7 @@ namespace MitarashiDango.AvatarCatalog
 
             if (GUILayout.Button("アバター再読み込み"))
             {
-                RefreshAvatars();
-                Repaint();
+                OnReloadAvatarListButton_Click();
             }
         }
 
@@ -298,6 +291,27 @@ namespace MitarashiDango.AvatarCatalog
                 .Select(path => AssetDatabase.LoadAssetAtPath<SceneAsset>(path))
                 .Where(asset => asset != null)
                 .ToList();
+        }
+
+        private void OnAvatarItem_Click(AvatarCatalog.Avatar avatar)
+        {
+            var avatarObject = ChangeSelectingObject(avatar);
+            if (avatarObject != null)
+            {
+                Debug.Log("Selected: " + avatarObject.name);
+            }
+        }
+
+        private void OnFirstTimeSetupButton_Click()
+        {
+            RefreshAvatars();
+            Repaint();
+        }
+
+        private void OnReloadAvatarListButton_Click()
+        {
+            RefreshAvatars();
+            Repaint();
         }
 
         internal class AvatarListItem
