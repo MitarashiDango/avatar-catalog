@@ -55,9 +55,20 @@ namespace MitarashiDango.AvatarCatalog
             AssetDatabase.Refresh();
         }
 
-        public static AvatarCatalog CreateOrLoad()
+        public static AvatarCatalog Load()
         {
             var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalog>(ASSET_FILE_PATH);
+            if (asset)
+            {
+                return asset;
+            }
+
+            return null;
+        }
+
+        public static AvatarCatalog CreateOrLoad()
+        {
+            var asset = Load();
             if (!asset)
             {
                 asset = ScriptableObject.CreateInstance<AvatarCatalog>();

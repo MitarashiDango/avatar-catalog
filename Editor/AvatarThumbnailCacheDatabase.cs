@@ -126,9 +126,20 @@ namespace MitarashiDango.AvatarCatalog
             AssetDatabase.Refresh();
         }
 
-        public static AvatarThumbnailCacheDatabase CreateOrLoad()
+        public static AvatarThumbnailCacheDatabase Load()
         {
             var asset = AssetDatabase.LoadAssetAtPath<AvatarThumbnailCacheDatabase>(ASSET_FILE_PATH);
+            if (asset)
+            {
+                return asset;
+            }
+
+            return null;
+        }
+
+        public static AvatarThumbnailCacheDatabase CreateOrLoad()
+        {
+            var asset = Load();
             if (!asset)
             {
                 asset = ScriptableObject.CreateInstance<AvatarThumbnailCacheDatabase>();

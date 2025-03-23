@@ -27,10 +27,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnEnable()
         {
-            CreateFolders();
             CreateOrLoadAssetFiles();
-
-            // RefreshAvatars();
         }
 
         private void OnDisable()
@@ -73,6 +70,12 @@ namespace MitarashiDango.AvatarCatalog
             _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.CreateOrLoad();
         }
 
+        public void LoadAssetFiles()
+        {
+            _avatarCatalog = AvatarCatalog.Load();
+            _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.Load();
+        }
+
         private void RefreshAvatars()
         {
             // TODO 設定で調整可能にする
@@ -82,6 +85,7 @@ namespace MitarashiDango.AvatarCatalog
             var zOffset = 5.2f;
             var backgroundColor = Color.white;
 
+            CreateFolders();
             CreateOrLoadAssetFiles();
             InitializeAvatarRenderer();
 
@@ -198,14 +202,27 @@ namespace MitarashiDango.AvatarCatalog
 
             if (_avatarCatalog == null)
             {
-                CreateOrLoadAssetFiles();
+                LoadAssetFiles();
+            }
+
+            if (_avatarCatalog == null)
+            {
+                EditorGUILayout.LabelField("初回セットアップが完了していません");
+
+                if (GUILayout.Button("初回セットアップする"))
+                {
+                    RefreshAvatars();
+                    Repaint();
+                }
+
+                return;
             }
 
             if (_avatarCatalog.avatars.Count == 0)
             {
                 EditorGUILayout.LabelField("No avatars found.");
 
-                if (GUILayout.Button("Reload Avatars"))
+                if (GUILayout.Button("アバター再読み込み"))
                 {
                     RefreshAvatars();
                     Repaint();
@@ -271,7 +288,7 @@ namespace MitarashiDango.AvatarCatalog
 
             EditorGUILayout.EndScrollView();
 
-            if (GUILayout.Button("Reload Avatars"))
+            if (GUILayout.Button("アバター再読み込み"))
             {
                 RefreshAvatars();
                 Repaint();
