@@ -27,6 +27,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnEnable()
         {
+            CreateFolders();
             CreateOrLoadAssetFiles();
         }
 
@@ -48,19 +49,19 @@ namespace MitarashiDango.AvatarCatalog
 
         private void CreateFolders()
         {
-            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog"))
+            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data"))
             {
-                AssetDatabase.CreateFolder("Assets", "AvatarCatalog");
+                AssetDatabase.CreateFolder("Assets", "AvatarCatalog User Data");
             }
 
-            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog/Cache"))
+            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data/Cache"))
             {
-                AssetDatabase.CreateFolder("Assets/AvatarCatalog", "Cache");
+                AssetDatabase.CreateFolder("Assets/AvatarCatalog User Data", "Cache");
             }
 
-            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog/Cache/AvatarThumbnail"))
+            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data/Cache/AvatarThumbnails"))
             {
-                AssetDatabase.CreateFolder("Assets/AvatarCatalog/Cache", "AvatarThumbnail");
+                AssetDatabase.CreateFolder("Assets/AvatarCatalog User Data/Cache", "AvatarThumbnails");
             }
         }
 

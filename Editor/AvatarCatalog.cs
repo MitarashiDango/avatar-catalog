@@ -9,7 +9,7 @@ namespace MitarashiDango.AvatarCatalog
     [Serializable]
     public class AvatarCatalog : ScriptableObject
     {
-        public static string ASSET_FILE_PATH = "Assets/AvatarCatalog/AvatarCatalog.asset";
+        public static string ASSET_FILE_PATH = "Assets/AvatarCatalog User Data/AvatarCatalog.asset";
 
         [SerializeField]
         private List<Avatar> _avatars = new List<Avatar>();
