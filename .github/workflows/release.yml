@@ -28,7 +28,7 @@ jobs:
     permissions:
       contents: write
     env:
-      packagePath: Packages/${{ vars.PACKAGE_NAME }}
+      assetFolderPath: Assets/${{ vars.ASSET_NAME }}
     if: needs.config.outputs.config_package == 'true'
     steps:
       # Checkout Local Repository
@@ -36,10 +36,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          path: "${{ env.packagePath }}"
+          path: "${{ env.assetFolderPath }}"
 
       - name: Git Checkout
-        working-directory: "${{ env.packagePath }}"
+        working-directory: "${{ env.assetFolderPath }}"
         run: git checkout ${{ github.event.inputs.ref }}
         if: ${{ github.event.inputs.ref != '' }}
 
@@ -48,24 +48,24 @@ jobs:
         id: version
         uses: zoexx/github-action-json-file-properties@d02f28167f05bf70cd75352b11c25a4e8c39bf38
         with:
-          file_path: "${{ env.packagePath }}/package.json"
+          file_path: "${{ env.assetFolderPath }}/package.json"
           prop_path: "version"
 
       # Configure the Environment Variables needed for releasing the Package
       - name: Set Environment Variables
         run: |
           echo "zipFile=${{ vars.PACKAGE_NAME }}-${{ steps.version.outputs.value }}".zip >> $GITHUB_ENV
-          echo "unityPackage=${{ vars.PACKAGE_NAME }}-${{ steps.version.outputs.value }}.unitypackage" >> $GITHUB_ENV
+          echo "unityPackage=${{ vars.ASSET_NAME }}-${{ steps.version.outputs.value }}.unitypackage" >> $GITHUB_ENV
           echo "version=${{ steps.version.outputs.value }}" >> $GITHUB_ENV
 
       # Zip the Package for release
       - name: Create Package Zip
-        working-directory: "${{ env.packagePath }}"
+        working-directory: "${{ env.assetFolderPath }}"
         run: zip -r "${{ github.workspace }}/${{ env.zipFile }}" . -x .git .github '.git/*' '.github/*'
 
       # Build a list of .meta files for future use
       - name: Track Package Meta Files
-        run: find "${{ env.packagePath }}/" -name \*.meta >> metaList
+        run: find "${{ env.assetFolderPath }}/" -name \*.meta >> metaList
 
       # Make a UnityPackage version of the Package for release
       - name: Create UnityPackage
@@ -81,5 +81,5 @@ jobs:
           files: |
             ${{ env.zipFile }}
             ${{ env.unityPackage }}
-            ${{ env.packagePath }}/package.json
+            ${{ env.assetFolderPath }}/package.json
           tag_name: ${{ env.version }}
