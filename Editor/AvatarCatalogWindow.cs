@@ -10,10 +10,11 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarCatalogWindow : EditorWindow
     {
+        private static readonly int IMAGE_SIZE = 192;
+        private static readonly int ROW_SPACING = 20;
+        private static readonly int MIN_COLUMN_SPACING = 20;
+
         private AvatarRenderer _avatarRenderer;
-        private int _imageSize = 192;
-        private int _padding = 10;
-        private int _columns = 3;
         private Vector2 _scrollPosition;
         private AvatarCatalog _avatarCatalog;
         private AvatarThumbnailCacheDatabase _avatarThumbnailCacheDatabase;
@@ -227,24 +228,43 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             // ウィンドウ幅に基づいて列数を決定
-            _columns = Mathf.Max(1, (int)(position.width / (_imageSize + _padding)));
-            _imageSize = Mathf.Min(192, (int)(position.width / _columns) - _padding); // サイズ制限
+            var innerWidth = Mathf.FloorToInt(position.width - 22);  // スクロールバーの横幅分引く
+            var columns = Mathf.Max(1, (innerWidth - MIN_COLUMN_SPACING * 2) / (IMAGE_SIZE + MIN_COLUMN_SPACING));
+            var totalPadding = innerWidth - (columns * IMAGE_SIZE);
+            var columnSpacing = columns >= 1 ? Mathf.Max(totalPadding / (columns + 1), 0) : 0;
 
-            var rows = Mathf.CeilToInt((float)_avatarCatalog.avatars.Count / _columns);
+            var totalItems = _avatarCatalog.avatars.Count;
+            var rows = Mathf.CeilToInt((float)totalItems / columns);
 
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
             for (var row = 0; row < rows; row++)
             {
-                EditorGUILayout.BeginHorizontal();
-
-                for (var col = 0; col < _columns; col++)
+                if (columns > 1)
                 {
-                    var index = row * _columns + col;
-                    if (index >= _avatarCatalog.avatars.Count)
+                    GUILayout.Space(ROW_SPACING);
+                }
+                else
+                {
+                    GUILayout.Space(Mathf.Min(ROW_SPACING, columnSpacing));
+                }
+
+                EditorGUILayout.BeginHorizontal(GUILayout.Width(innerWidth));
+
+                for (var col = 0; col < columns; col++)
+                {
+                    var index = row * columns + col;
+                    if (index >= totalItems)
                     {
                         break;
                     }
+
+                    if (columnSpacing > 0)
+                    {
+                        GUILayout.Space(columnSpacing); // 列間のスペース
+                    }
+
+                    EditorGUILayout.BeginVertical(GUILayout.Width(IMAGE_SIZE));
 
                     var currentAvatar = _avatarCatalog.avatars[index];
                     if (!GlobalObjectId.TryParse(currentAvatar.globalObjectId, out var avatarGlobalObjectId))
@@ -253,16 +273,16 @@ namespace MitarashiDango.AvatarCatalog
                         continue;
                     }
 
-                    if (GUILayout.Button("", GUILayout.Width(_imageSize), GUILayout.Height(_imageSize + 20)))
+                    if (GUILayout.Button("", GUILayout.Width(IMAGE_SIZE), GUILayout.Height(IMAGE_SIZE + 20)))
                     {
                         OnAvatarItem_Click(currentAvatar);
                     }
 
-                    Rect lastRect = GUILayoutUtility.GetLastRect();
+                    var itemRect = GUILayoutUtility.GetLastRect();
                     var thumbnailTexture = _avatarThumbnailCacheDatabase.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
                     if (thumbnailTexture != null)
                     {
-                        GUI.DrawTexture(new Rect(lastRect.x, lastRect.y, _imageSize, _imageSize), thumbnailTexture, ScaleMode.ScaleToFit);
+                        GUI.DrawTexture(new Rect(itemRect.x, itemRect.y, IMAGE_SIZE, IMAGE_SIZE), thumbnailTexture, ScaleMode.ScaleToFit);
                     }
 
                     GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
@@ -271,7 +291,14 @@ namespace MitarashiDango.AvatarCatalog
                         wordWrap = true
                     };
 
-                    GUI.Label(new Rect(lastRect.x, lastRect.y + _imageSize, _imageSize, 20), currentAvatar.avatarName, labelStyle);
+                    GUI.Label(new Rect(itemRect.x, itemRect.y + IMAGE_SIZE, IMAGE_SIZE, 20), currentAvatar.avatarName, labelStyle);
+
+                    EditorGUILayout.EndVertical();
+                }
+
+                if (columnSpacing > 0)
+                {
+                    GUILayout.Space(columnSpacing);
                 }
 
                 EditorGUILayout.EndHorizontal();
