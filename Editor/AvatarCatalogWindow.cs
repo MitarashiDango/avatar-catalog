@@ -277,8 +277,11 @@ namespace MitarashiDango.AvatarCatalog
             var headerContainer = new VisualElement();
             headerContainer.style.flexDirection = FlexDirection.Row;
             headerContainer.style.justifyContent = Justify.SpaceBetween;
-            headerContainer.style.paddingTop = 2;
-            headerContainer.style.paddingBottom = 2;
+            headerContainer.style.paddingTop = 1;
+            headerContainer.style.paddingBottom = 1;
+            headerContainer.style.backgroundColor = new Color(60f / 255f, 60f / 255f, 60f / 255f);
+            headerContainer.style.borderBottomColor = new Color(35f / 255f, 35f / 255f, 35f / 255f);
+            headerContainer.style.borderBottomWidth = 1;
 
             var searchIcon = new Image();
             searchIcon.image = EditorGUIUtility.IconContent("Search On Icon").image;
@@ -288,6 +291,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var searchTextField = new TextField();
             searchTextField.style.flexGrow = 1;
+            searchTextField.style.height = 16;
             searchTextField.RegisterValueChangedCallback(evt =>
             {
                 _searchWords.Clear();
@@ -340,6 +344,7 @@ namespace MitarashiDango.AvatarCatalog
             _gridContainer.style.flexDirection = FlexDirection.Row;
             _gridContainer.style.flexWrap = Wrap.Wrap;
             _gridContainer.style.justifyContent = Justify.SpaceAround;
+            _gridContainer.style.backgroundColor = new Color(51f / 255f, 51f / 255f, 51f / 255f);
             scrollView.Add(_gridContainer);
 
             root.UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
