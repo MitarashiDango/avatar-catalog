@@ -203,12 +203,15 @@ namespace MitarashiDango.AvatarCatalog
             root.Clear();
 
             _avatarsListViewContainer = new VisualElement();
+            _avatarsListViewContainer.style.flexGrow = 1;
             root.Add(_avatarsListViewContainer);
 
             _firstSetupContainer = new VisualElement();
+            _firstSetupContainer.style.flexGrow = 1;
             root.Add(_firstSetupContainer);
 
             _playModeContainer = new VisualElement();
+            _playModeContainer.style.flexGrow = 1;
             root.Add(_playModeContainer);
 
             CreateAvatarsListViewContainer();
@@ -331,13 +334,16 @@ namespace MitarashiDango.AvatarCatalog
 
             var scrollView = new ScrollView();
             scrollView.style.flexGrow = 1;
+            scrollView.style.backgroundColor = new Color(51f / 255f, 51f / 255f, 51f / 255f);
+            scrollView.style.marginTop = 0;
+            scrollView.style.marginBottom = 0;
+            scrollView.style.marginBottom = 0;
             root.Add(scrollView);
 
             _gridContainer = new VisualElement();
             _gridContainer.style.flexDirection = FlexDirection.Row;
             _gridContainer.style.flexWrap = Wrap.Wrap;
             _gridContainer.style.justifyContent = Justify.SpaceAround;
-            _gridContainer.style.backgroundColor = new Color(51f / 255f, 51f / 255f, 51f / 255f);
             scrollView.Add(_gridContainer);
 
             root.UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
