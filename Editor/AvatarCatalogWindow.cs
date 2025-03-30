@@ -240,6 +240,11 @@ namespace MitarashiDango.AvatarCatalog
 
         private void ShowPlayModeContainer()
         {
+            if (_avatarsListViewContainer != null && _firstSetupContainer != null && _playModeContainer != null)
+            {
+                return;
+            }
+
             _avatarsListViewContainer.style.display = DisplayStyle.None;
             _firstSetupContainer.style.display = DisplayStyle.None;
             _playModeContainer.style.display = DisplayStyle.Flex;
@@ -259,6 +264,11 @@ namespace MitarashiDango.AvatarCatalog
 
         private void ShowFirstSetupContainer()
         {
+            if (_avatarsListViewContainer != null && _firstSetupContainer != null && _playModeContainer != null)
+            {
+                return;
+            }
+
             _avatarsListViewContainer.style.display = DisplayStyle.None;
             _firstSetupContainer.style.display = DisplayStyle.Flex;
             _playModeContainer.style.display = DisplayStyle.None;
@@ -457,6 +467,11 @@ namespace MitarashiDango.AvatarCatalog
 
         private void ShowAvatarsListViewContainer()
         {
+            if (_avatarsListViewContainer != null && _firstSetupContainer != null && _playModeContainer != null)
+            {
+                return;
+            }
+
             _avatarsListViewContainer.style.display = DisplayStyle.Flex;
             _firstSetupContainer.style.display = DisplayStyle.None;
             _playModeContainer.style.display = DisplayStyle.None;
