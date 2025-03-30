@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 using VRC.SDK3.Avatars.Components;
 
 namespace MitarashiDango.AvatarCatalog
@@ -11,13 +12,22 @@ namespace MitarashiDango.AvatarCatalog
     public class AvatarCatalogWindow : EditorWindow
     {
         private static readonly int IMAGE_SIZE = 192;
-        private static readonly int ROW_SPACING = 20;
-        private static readonly int MIN_COLUMN_SPACING = 20;
+        private static readonly int ROW_SPACING = 10;
+        private static readonly int MIN_COLUMN_SPACING = 10;
+        private static readonly float DOUBLE_CLICK_THRESHOLD = 0.3f;
+        private static readonly char[] SEARCH_WORDS_DELIMITER_CHARS = { ' ' };
 
         private AvatarRenderer _avatarRenderer;
-        private Vector2 _scrollPosition;
         private AvatarCatalog _avatarCatalog;
         private AvatarThumbnailCacheDatabase _avatarThumbnailCacheDatabase;
+
+        private VisualElement _avatarsListViewContainer;
+        private VisualElement _firstSetupContainer;
+        private VisualElement _playModeContainer;
+        private VisualElement _gridContainer;
+        private List<string> _searchWords = new List<string>();
+
+        private float _lastClickTime = 0f;
 
         [MenuItem("Tools/Avatar Catalog/Avatars List")]
         public static void ShowWindow()
@@ -28,12 +38,12 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnEnable()
         {
-            CreateFolders();
-            CreateOrLoadAssetFiles();
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
         private void OnDisable()
         {
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             _avatarRenderer?.Dispose();
             _avatarRenderer = null;
         }
@@ -150,7 +160,7 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
-            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            var scene = SceneManager.GetSceneByPath(scenePath);
             if (!scene.isLoaded)
             {
                 if (!EditorSceneManager.SaveOpenScenes())
@@ -190,126 +200,267 @@ namespace MitarashiDango.AvatarCatalog
             return targetAvatarObject;
         }
 
-        private void OnGUI()
+        private void CreateGUI()
         {
+            var root = rootVisualElement;
+            root.Clear();
+
+            _avatarsListViewContainer = new VisualElement();
+            root.Add(_avatarsListViewContainer);
+
+            _firstSetupContainer = new VisualElement();
+            root.Add(_firstSetupContainer);
+
+            _playModeContainer = new VisualElement();
+            root.Add(_playModeContainer);
+
+            CreateAvatarsListViewContainer();
+            CreateFirstSetupContainer();
+            CreatePlayModeContainer();
+
             if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode)
             {
-                EditorGUILayout.HelpBox("Play Modeまたはビルド中は操作できません", MessageType.Info);
-                return;
+                ShowPlayModeContainer();
             }
+            else if (_avatarCatalog != null)
+            {
+                ShowAvatarsListViewContainer();
+            }
+            else
+            {
+                ShowFirstSetupContainer();
+            }
+        }
+
+        private void CreatePlayModeContainer()
+        {
+            var root = _playModeContainer;
+            root.Add(new Label("Play Modeまたはビルド中は操作できません"));
+        }
+
+        private void ShowPlayModeContainer()
+        {
+            _avatarsListViewContainer.style.display = DisplayStyle.None;
+            _firstSetupContainer.style.display = DisplayStyle.None;
+            _playModeContainer.style.display = DisplayStyle.Flex;
+        }
+
+        private void CreateFirstSetupContainer()
+        {
+            var root = _firstSetupContainer;
+            root.Add(new Label("初回セットアップが完了していません"));
+            var initialSetupButton = new Button(() => OnFirstTimeSetupButton_Click())
+            {
+                tooltip = "初回セットアップ処理を実行します",
+                text = "初回セットアップする",
+            };
+            root.Add(initialSetupButton);
+        }
+
+        private void ShowFirstSetupContainer()
+        {
+            _avatarsListViewContainer.style.display = DisplayStyle.None;
+            _firstSetupContainer.style.display = DisplayStyle.Flex;
+            _playModeContainer.style.display = DisplayStyle.None;
+        }
+
+        private void CreateAvatarsListViewContainer()
+        {
+            var root = _avatarsListViewContainer;
+            root.style.flexDirection = FlexDirection.Column;
 
             if (_avatarCatalog == null)
             {
                 LoadAssetFiles();
             }
 
-            if (_avatarCatalog == null)
+            var headerContainer = new VisualElement();
+            headerContainer.style.flexDirection = FlexDirection.Row;
+            headerContainer.style.justifyContent = Justify.SpaceBetween;
+            headerContainer.style.paddingTop = 2;
+            headerContainer.style.paddingBottom = 2;
+
+            var searchIcon = new Image();
+            searchIcon.image = EditorGUIUtility.IconContent("Search On Icon").image;
+            searchIcon.style.width = 16;
+            searchIcon.style.height = 16;
+            headerContainer.Add(searchIcon);
+
+            var searchTextField = new TextField();
+            searchTextField.style.flexGrow = 1;
+            searchTextField.RegisterValueChangedCallback(evt =>
             {
-                EditorGUILayout.LabelField("初回セットアップが完了していません");
-
-                if (GUILayout.Button("初回セットアップする"))
+                _searchWords.Clear();
+                if (evt.newValue.Length > 0)
                 {
-                    OnFirstTimeSetupButton_Click();
+                    var value = evt.newValue.ToLower();
+                    _searchWords.AddRange(value.Split(SEARCH_WORDS_DELIMITER_CHARS));
                 }
+                UpdateGridLayout();
+            });
 
+            headerContainer.Add(searchTextField);
+
+            var reloadButton = new Button(() =>
+            {
+                OnReloadAvatarListButton_Click();
+            })
+            {
+                tooltip = "アバター一覧を更新"
+            };
+
+            reloadButton.style.width = 16;
+            reloadButton.style.height = 16;
+            reloadButton.style.borderBottomWidth = 0;
+            reloadButton.style.borderTopWidth = 0;
+            reloadButton.style.borderLeftWidth = 0;
+            reloadButton.style.borderRightWidth = 0;
+            reloadButton.style.paddingBottom = 0;
+            reloadButton.style.paddingTop = 0;
+            reloadButton.style.paddingLeft = 0;
+            reloadButton.style.paddingRight = 0;
+            reloadButton.style.backgroundColor = new StyleColor(Color.clear);
+            reloadButton.style.alignSelf = Align.FlexEnd;
+
+            var reloadIcon = new Image();
+            reloadIcon.image = EditorGUIUtility.IconContent("Refresh").image;
+            reloadIcon.style.width = 16;
+            reloadIcon.style.height = 16;
+
+            reloadButton.Add(reloadIcon);
+            headerContainer.Add(reloadButton);
+
+            root.Add(headerContainer);
+
+            var scrollView = new ScrollView();
+            scrollView.style.flexGrow = 1;
+            root.Add(scrollView);
+
+            _gridContainer = new VisualElement();
+            _gridContainer.style.flexDirection = FlexDirection.Row;
+            _gridContainer.style.flexWrap = Wrap.Wrap;
+            _gridContainer.style.justifyContent = Justify.SpaceAround;
+            scrollView.Add(_gridContainer);
+
+            root.UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
+            root.RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
+        }
+
+        private void UpdateGridLayout()
+        {
+            _gridContainer.Clear();
+
+            var scrollViewWidth = rootVisualElement.contentRect.width;
+            if (float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
+            {
                 return;
             }
 
-            if (_avatarCatalog.avatars.Count == 0)
+            var avatars = _avatarCatalog.avatars;
+            if (_searchWords.Count > 0)
             {
-                EditorGUILayout.LabelField("No avatars found.");
+                avatars = avatars.Where(avatar => _searchWords.All(word => avatar.avatarName.ToLower().IndexOf(word) != -1)).ToList();
+            }
 
-                if (GUILayout.Button("アバター再読み込み"))
-                {
-                    OnReloadAvatarListButton_Click();
-                }
+            var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - (MIN_COLUMN_SPACING * 2)) / IMAGE_SIZE));
+            var totalItems = avatars.Count;
+            var rows = Mathf.CeilToInt((float)totalItems / maxColumns);
 
+            if (totalItems == 0)
+            {
+                _gridContainer.Add(new Label("アバターが見つかりません"));
                 return;
             }
 
-            // ウィンドウ幅に基づいて列数を決定
-            var innerWidth = Mathf.FloorToInt(position.width - 22);  // スクロールバーの横幅分引く
-            var columns = Mathf.Max(1, (innerWidth - MIN_COLUMN_SPACING * 2) / (IMAGE_SIZE + MIN_COLUMN_SPACING));
-            var totalPadding = innerWidth - (columns * IMAGE_SIZE);
-            var columnSpacing = columns >= 1 ? Mathf.Max(totalPadding / (columns + 1), 0) : 0;
-
-            var totalItems = _avatarCatalog.avatars.Count;
-            var rows = Mathf.CeilToInt((float)totalItems / columns);
-
-            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+            var totalRowWidth = maxColumns * 192;
+            var spaceBetween = (scrollViewWidth - totalRowWidth) / (maxColumns + 1);
 
             for (var row = 0; row < rows; row++)
             {
-                if (columns > 1)
+                var startIndex = row * maxColumns;
+                var endIndex = Mathf.Min(startIndex + maxColumns, totalItems);
+                var itemCountInRow = endIndex - startIndex;
+
+                var rowContainer = new VisualElement();
+                rowContainer.style.flexDirection = FlexDirection.Row;
+                rowContainer.style.flexWrap = Wrap.NoWrap;
+                rowContainer.style.width = scrollViewWidth - (MIN_COLUMN_SPACING * 2) - spaceBetween;
+                rowContainer.style.justifyContent = Justify.SpaceBetween;
+                rowContainer.style.marginBottom = ROW_SPACING;
+
+                for (var i = startIndex; i < endIndex; i++)
                 {
-                    GUILayout.Space(ROW_SPACING);
-                }
-                else
-                {
-                    GUILayout.Space(Mathf.Min(ROW_SPACING, columnSpacing));
-                }
-
-                EditorGUILayout.BeginHorizontal(GUILayout.Width(innerWidth));
-
-                for (var col = 0; col < columns; col++)
-                {
-                    var index = row * columns + col;
-                    if (index >= totalItems)
-                    {
-                        break;
-                    }
-
-                    if (columnSpacing > 0)
-                    {
-                        GUILayout.Space(columnSpacing); // 列間のスペース
-                    }
-
-                    EditorGUILayout.BeginVertical(GUILayout.Width(IMAGE_SIZE));
-
-                    var currentAvatar = _avatarCatalog.avatars[index];
+                    var currentAvatar = avatars[i];
                     if (!GlobalObjectId.TryParse(currentAvatar.globalObjectId, out var avatarGlobalObjectId))
                     {
                         Debug.LogWarning("failed to try parse avatar GlobalObjectId");
                         continue;
                     }
 
-                    if (GUILayout.Button("", GUILayout.Width(IMAGE_SIZE), GUILayout.Height(IMAGE_SIZE + 20)))
-                    {
-                        OnAvatarItem_Click(currentAvatar);
-                    }
+                    var itemContainer = new VisualElement();
+                    itemContainer.style.width = IMAGE_SIZE;
+                    itemContainer.style.height = IMAGE_SIZE;
+                    itemContainer.style.marginTop = ROW_SPACING;
+                    itemContainer.style.alignItems = Align.Center;
+                    itemContainer.style.justifyContent = Justify.Center;
 
-                    var itemRect = GUILayoutUtility.GetLastRect();
                     var thumbnailTexture = _avatarThumbnailCacheDatabase.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
+
+                    var image = new Image();
                     if (thumbnailTexture != null)
                     {
-                        GUI.DrawTexture(new Rect(itemRect.x, itemRect.y, IMAGE_SIZE, IMAGE_SIZE), thumbnailTexture, ScaleMode.ScaleToFit);
+                        image.image = thumbnailTexture;
                     }
+                    image.scaleMode = ScaleMode.ScaleToFit;
+                    image.style.width = IMAGE_SIZE;
+                    image.style.height = IMAGE_SIZE;
+                    itemContainer.Add(image);
 
-                    GUIStyle labelStyle = new GUIStyle(GUI.skin.label)
+                    var label = new Label(currentAvatar.avatarName);
+                    label.style.marginTop = 5;
+                    label.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    label.style.whiteSpace = WhiteSpace.Normal;
+                    itemContainer.Add(label);
+
+                    itemContainer.RegisterCallback<ClickEvent>((e) =>
                     {
-                        alignment = TextAnchor.MiddleCenter,
-                        wordWrap = true
-                    };
+                        if (e.button == (int)MouseButton.LeftMouse)
+                        {
+                            var currentTime = Time.realtimeSinceStartup;
+                            if (currentTime - _lastClickTime < DOUBLE_CLICK_THRESHOLD)
+                            {
+                                OnAvatarItem_Click(currentAvatar);
+                            }
 
-                    GUI.Label(new Rect(itemRect.x, itemRect.y + IMAGE_SIZE, IMAGE_SIZE, 20), currentAvatar.avatarName, labelStyle);
+                            _lastClickTime = currentTime;
+                        }
+                    });
 
-                    EditorGUILayout.EndVertical();
+                    rowContainer.Add(itemContainer);
                 }
 
-                if (columnSpacing > 0)
+                // ダミー要素を追加
+                if (row == rows - 1)
                 {
-                    GUILayout.Space(columnSpacing);
+                    int emptySlots = maxColumns - itemCountInRow;
+                    for (int j = 0; j < emptySlots; j++)
+                    {
+                        var dummyItem = new VisualElement();
+                        dummyItem.style.width = 192;
+                        dummyItem.style.height = 192;
+                        rowContainer.Add(dummyItem);
+                    }
                 }
 
-                EditorGUILayout.EndHorizontal();
+                _gridContainer.Add(rowContainer);
             }
+        }
 
-            EditorGUILayout.EndScrollView();
-
-            if (GUILayout.Button("アバター再読み込み"))
-            {
-                OnReloadAvatarListButton_Click();
-            }
+        private void ShowAvatarsListViewContainer()
+        {
+            _avatarsListViewContainer.style.display = DisplayStyle.Flex;
+            _firstSetupContainer.style.display = DisplayStyle.None;
+            _playModeContainer.style.display = DisplayStyle.None;
         }
 
         private List<SceneAsset> GetAllScenes()
@@ -333,13 +484,46 @@ namespace MitarashiDango.AvatarCatalog
         private void OnFirstTimeSetupButton_Click()
         {
             RefreshAvatars();
-            Repaint();
+            UpdateGridLayout();
+
+            if (_avatarCatalog != null)
+            {
+                ShowAvatarsListViewContainer();
+            }
+            else
+            {
+                ShowFirstSetupContainer();
+            }
         }
 
         private void OnReloadAvatarListButton_Click()
         {
             RefreshAvatars();
-            Repaint();
+            UpdateGridLayout();
+        }
+
+        private void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.EnteredPlayMode)
+            {
+                ShowPlayModeContainer();
+            }
+            else if (state == PlayModeStateChange.ExitingPlayMode || state == PlayModeStateChange.EnteredEditMode)
+            {
+                if (_avatarCatalog != null)
+                {
+                    ShowAvatarsListViewContainer();
+                }
+                else
+                {
+                    ShowFirstSetupContainer();
+                }
+            }
+        }
+
+        private void OnGeometryChanged(GeometryChangedEvent e)
+        {
+            UpdateGridLayout();
         }
 
         internal class AvatarListItem
