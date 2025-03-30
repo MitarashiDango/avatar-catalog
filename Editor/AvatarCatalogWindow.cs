@@ -14,7 +14,6 @@ namespace MitarashiDango.AvatarCatalog
         private static readonly int IMAGE_SIZE = 192;
         private static readonly int ROW_SPACING = 10;
         private static readonly int MIN_COLUMN_SPACING = 10;
-        private static readonly float DOUBLE_CLICK_THRESHOLD = 0.3f;
         private static readonly char[] SEARCH_WORDS_DELIMITER_CHARS = { ' ' };
 
         private AvatarRenderer _avatarRenderer;
@@ -25,9 +24,7 @@ namespace MitarashiDango.AvatarCatalog
         private VisualElement _firstSetupContainer;
         private VisualElement _playModeContainer;
         private VisualElement _gridContainer;
-        private List<string> _searchWords = new List<string>();
-
-        private float _lastClickTime = 0f;
+        private string _searchText = "";
 
         [MenuItem("Tools/Avatar Catalog/Avatars List")]
         public static void ShowWindow()
@@ -290,16 +287,12 @@ namespace MitarashiDango.AvatarCatalog
             headerContainer.Add(searchIcon);
 
             var searchTextField = new TextField();
+            searchTextField.value = _searchText;
             searchTextField.style.flexGrow = 1;
             searchTextField.style.height = 16;
             searchTextField.RegisterValueChangedCallback(evt =>
             {
-                _searchWords.Clear();
-                if (evt.newValue.Length > 0)
-                {
-                    var value = evt.newValue.ToLower();
-                    _searchWords.AddRange(value.Split(SEARCH_WORDS_DELIMITER_CHARS));
-                }
+                _searchText = evt.newValue;
                 UpdateGridLayout();
             });
 
@@ -362,9 +355,10 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var avatars = _avatarCatalog.avatars;
-            if (_searchWords.Count > 0)
+            if (_searchText.Length > 0)
             {
-                avatars = avatars.Where(avatar => _searchWords.All(word => avatar.avatarName.ToLower().IndexOf(word) != -1)).ToList();
+                var searchWords = _searchText.ToLower().Split(SEARCH_WORDS_DELIMITER_CHARS);
+                avatars = avatars.Where(avatar => searchWords.All(word => avatar.avatarName.ToLower().IndexOf(word) != -1)).ToList();
             }
 
             var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - (MIN_COLUMN_SPACING * 2)) / IMAGE_SIZE));
@@ -429,15 +423,9 @@ namespace MitarashiDango.AvatarCatalog
 
                     itemContainer.RegisterCallback<ClickEvent>((e) =>
                     {
-                        if (e.button == (int)MouseButton.LeftMouse)
+                        if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
                         {
-                            var currentTime = Time.realtimeSinceStartup;
-                            if (currentTime - _lastClickTime < DOUBLE_CLICK_THRESHOLD)
-                            {
-                                OnAvatarItem_Click(currentAvatar);
-                            }
-
-                            _lastClickTime = currentTime;
+                            OnAvatarItem_Click(currentAvatar);
                         }
                     });
 
