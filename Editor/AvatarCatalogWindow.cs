@@ -240,7 +240,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void ShowPlayModeContainer()
         {
-            if (_avatarsListViewContainer != null && _firstSetupContainer != null && _playModeContainer != null)
+            if (_avatarsListViewContainer == null && _firstSetupContainer == null && _playModeContainer == null)
             {
                 return;
             }
@@ -264,7 +264,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void ShowFirstSetupContainer()
         {
-            if (_avatarsListViewContainer != null && _firstSetupContainer != null && _playModeContainer != null)
+            if (_avatarsListViewContainer == null && _firstSetupContainer == null && _playModeContainer == null)
             {
                 return;
             }
@@ -358,6 +358,18 @@ namespace MitarashiDango.AvatarCatalog
 
             root.UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
             root.RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
+        }
+
+        private void ShowAvatarsListViewContainer()
+        {
+            if (_avatarsListViewContainer == null && _firstSetupContainer == null && _playModeContainer == null)
+            {
+                return;
+            }
+
+            _avatarsListViewContainer.style.display = DisplayStyle.Flex;
+            _firstSetupContainer.style.display = DisplayStyle.None;
+            _playModeContainer.style.display = DisplayStyle.None;
         }
 
         private void UpdateGridLayout()
@@ -463,18 +475,6 @@ namespace MitarashiDango.AvatarCatalog
 
                 _gridContainer.Add(rowContainer);
             }
-        }
-
-        private void ShowAvatarsListViewContainer()
-        {
-            if (_avatarsListViewContainer != null && _firstSetupContainer != null && _playModeContainer != null)
-            {
-                return;
-            }
-
-            _avatarsListViewContainer.style.display = DisplayStyle.Flex;
-            _firstSetupContainer.style.display = DisplayStyle.None;
-            _playModeContainer.style.display = DisplayStyle.None;
         }
 
         private List<SceneAsset> GetAllScenes()
