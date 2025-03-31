@@ -463,8 +463,8 @@ namespace MitarashiDango.AvatarCatalog
                 // ダミー要素を追加
                 if (row == rows - 1)
                 {
-                    int emptySlots = maxColumns - itemCountInRow;
-                    for (int j = 0; j < emptySlots; j++)
+                    var emptySlots = maxColumns - itemCountInRow;
+                    for (var j = 0; j < emptySlots; j++)
                     {
                         var dummyItem = new VisualElement();
                         dummyItem.style.width = 192;
