@@ -1,0 +1,10 @@
+:root {
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+#initial-setup-not-yet-completed-label {
+  color: rgb(255, 255, 255);
+}
+

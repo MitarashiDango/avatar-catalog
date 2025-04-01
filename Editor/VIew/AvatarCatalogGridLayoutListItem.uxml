@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="AvatarCatalogGridLayoutListItem.uss" />
+    <ui:VisualElement style="flex-grow: 1; align-items: center; justify-content: center;">
+        <ui:Image name="avatar-thumbnail-image" class="avatar-thumbnail-image" />
+        <ui:Label parse-escape-sequences="false" display-tooltip-when-elided="true" name="avatar-name-label" class="avatar-name-label" />
+    </ui:VisualElement>
+</ui:UXML>

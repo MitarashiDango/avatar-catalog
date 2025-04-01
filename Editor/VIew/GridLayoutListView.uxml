@@ -1,0 +1,6 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="GridLayoutListView.uss" />
+    <ui:ScrollView class="scroll-view" name="scroll-view">
+        <ui:VisualElement class="items-container" name="items-container" />
+    </ui:ScrollView>
+</ui:UXML>

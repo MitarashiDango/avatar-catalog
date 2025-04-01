@@ -1,0 +1,5 @@
+:root {
+  flex-direction: row;
+  flex-wrap: no-wrap;
+  margin-bottom: 10;
+}
