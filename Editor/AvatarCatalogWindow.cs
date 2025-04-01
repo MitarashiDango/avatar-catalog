@@ -243,7 +243,7 @@ namespace MitarashiDango.AvatarCatalog
         private void SetupAvatarCatalogInitialSetupView()
         {
             var root = _avatarCatalogInitialSetupView;
-            var button = root.Q<Button>("run-initial-setup");
+            var button = root.Q<Button>("run-initial-setup-button");
             button.RegisterCallback<ClickEvent>(e => OnRunInitialSetupButton_Click());
         }
 
@@ -293,7 +293,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void UpdateGridLayout()
         {
-            var gridContainer = _avatarCatalogView.Q<VisualElement>("avatar-catalog-grid-layout-view").Q<VisualElement>("items-container");
+            var gridContainer = _avatarCatalogView.Q<VisualElement>("avatar-catalog-grid-view").Q<VisualElement>("items-container");
 
             gridContainer.Clear();
 
@@ -346,15 +346,15 @@ namespace MitarashiDango.AvatarCatalog
                     gridLayoutItem.style.width = GRID_ITEM_SIZE;
                     gridLayoutItem.style.height = GRID_ITEM_SIZE;
 
-                    var image = gridLayoutItem.Q<Image>("avatar-thumbnail-image");
+                    var avatarThumbnailImage = gridLayoutItem.Q<Image>("avatar-thumbnail-image");
                     var thumbnailTexture = _avatarThumbnailCacheDatabase.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
                     if (thumbnailTexture != null)
                     {
-                        image.image = thumbnailTexture;
+                        avatarThumbnailImage.image = thumbnailTexture;
                     }
 
-                    var label = gridLayoutItem.Q<Label>("avatar-name-label");
-                    label.text = currentAvatar.avatarName;
+                    var avatarNameLabel = gridLayoutItem.Q<Label>("avatar-name-label");
+                    avatarNameLabel.text = currentAvatar.avatarName;
 
                     gridLayoutItem.RegisterCallback<ClickEvent>((e) => OnAvatarItem_Click(e, currentAvatar));
 

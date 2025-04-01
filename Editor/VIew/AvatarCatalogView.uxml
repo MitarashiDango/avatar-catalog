@@ -1,9 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/VIew/AvatarCatalogView.uss?fileID=7433441132597879392&amp;guid=f22464d79547e7f499a0a1a485b5ec61&amp;type=3#AvatarCatalogView" />
     <ui:Template src="AvatarCatalogHeader.uxml" name="AvatarCatalogHeader"/>
-    <ui:Template src="GridLayoutListView.uxml" name="AvatarCatalogGridLayoutView"/>
-    <ui:VisualElement name="avatar-catalog-view" class="avatar-catalog-view">
-        <ui:Instance template="AvatarCatalogHeader" name="avatar-catalog-header"/>
-        <ui:Instance template="AvatarCatalogGridLayoutView" name="avatar-catalog-grid-layout-view"/>
-    </ui:VisualElement>
+    <ui:Template src="GridLayoutListView.uxml" name="AvatarCatalogGridView"/>
+    <ui:Instance template="AvatarCatalogHeader" name="avatar-catalog-header"/>
+    <ui:Instance template="AvatarCatalogGridView" name="avatar-catalog-grid-view"/>
 </ui:UXML>

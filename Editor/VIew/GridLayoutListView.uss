@@ -9,7 +9,7 @@
   margin-bottom: 0;
 }
 
-.items-container {
+#items-container {
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-around;

@@ -1,8 +1,4 @@
 :root {
   flex-grow: 1;
-}
-
-.avatar-catalog-view {
-  flex-grow: 1; 
   flex-direction: column;
 }

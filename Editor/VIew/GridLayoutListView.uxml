@@ -1,6 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="GridLayoutListView.uss" />
-    <ui:ScrollView class="scroll-view" name="scroll-view">
-        <ui:VisualElement class="items-container" name="items-container" />
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/VIew/GridLayoutListView.uss?fileID=7433441132597879392&amp;guid=ee249d15f7fbfdb4c9866b4cec2f61a6&amp;type=3#GridLayoutListView" />
+    <ui:ScrollView class="scroll-view">
+        <ui:VisualElement name="items-container" />
     </ui:ScrollView>
 </ui:UXML>

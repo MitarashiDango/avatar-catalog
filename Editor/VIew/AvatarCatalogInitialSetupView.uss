@@ -4,7 +4,6 @@
   justify-content: center;
 }
 
-#initial-setup-not-yet-completed-label {
+.message-label {
   color: rgb(255, 255, 255);
 }
-
