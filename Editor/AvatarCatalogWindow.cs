@@ -310,15 +310,14 @@ namespace MitarashiDango.AvatarCatalog
                 avatars = avatars.Where(avatar => searchWords.All(word => avatar.avatarName.ToLower().IndexOf(word) != -1)).ToList();
             }
 
-            var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - (MIN_COLUMN_SPACING * 2)) / GRID_ITEM_SIZE));
             var totalItems = avatars.Count;
-            var rows = Mathf.CeilToInt((float)totalItems / maxColumns);
-
             if (totalItems == 0)
             {
-                gridContainer.Add(new Label("アバターが見つかりません"));
                 return;
             }
+
+            var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - (MIN_COLUMN_SPACING * 2)) / GRID_ITEM_SIZE));
+            var rows = Mathf.CeilToInt((float)totalItems / maxColumns);
 
             var totalRowWidth = maxColumns * GRID_ITEM_SIZE;
             var spaceBetween = (scrollViewWidth - totalRowWidth) / (maxColumns + 1);
