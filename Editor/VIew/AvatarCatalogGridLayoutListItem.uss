@@ -1,0 +1,13 @@
+:root {
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-thumbnail-image {
+  --unity-image-size: scale-to-fit;
+}
+
+.avatar-name-label {
+  margin-top: 5;
+  -unity-text-align: middle-center;
+}

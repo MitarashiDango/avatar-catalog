@@ -1,0 +1,9 @@
+:root {
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-label {
+  color: rgb(255, 255, 255);
+}

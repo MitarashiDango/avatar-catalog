@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/VIew/AvatarCatalogGridLayoutListItem.uss?fileID=7433441132597879392&amp;guid=cc9b175168036c84c88dfab2047ae030&amp;type=3#AvatarCatalogGridLayoutListItem" />
+    <ui:Image name="avatar-thumbnail-image" class="avatar-thumbnail-image" />
+    <ui:Label parse-escape-sequences="false" display-tooltip-when-elided="true" name="avatar-name-label" class="avatar-name-label" />
+</ui:UXML>

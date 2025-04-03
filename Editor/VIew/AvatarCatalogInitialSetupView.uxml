@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/VIew/AvatarCatalogInitialSetupView.uss?fileID=7433441132597879392&amp;guid=349379008704b414b88256a6148470ff&amp;type=3#AvatarCatalogInitialSetupView" />
+    <ui:Label text="初回セットアップが完了していません" parse-escape-sequences="true" display-tooltip-when-elided="true" class="message-label" />
+    <ui:Button text="初回セットアップする" tooltip="初回セットアップ処理を実行します" name="run-initial-setup-button" parse-escape-sequences="false" display-tooltip-when-elided="true" />
+</ui:UXML>
