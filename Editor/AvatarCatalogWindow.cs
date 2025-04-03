@@ -195,11 +195,16 @@ namespace MitarashiDango.AvatarCatalog
                     {
                         avatarObject.SetActive(false);
                     }
+
+                    continue;
                 }
-                else if (!avatarObject.activeSelf)
+
+                if (!avatarObject.activeSelf)
                 {
                     avatarObject.SetActive(true);
                 }
+
+                Selection.activeGameObject = avatarObject;
             }
 
             return targetAvatarObject;
