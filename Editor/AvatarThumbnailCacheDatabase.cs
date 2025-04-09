@@ -10,7 +10,7 @@ namespace MitarashiDango.AvatarCatalog
     [Serializable]
     public class AvatarThumbnailCacheDatabase : ScriptableObject
     {
-        public static string ASSET_FILE_PATH = "Assets/AvatarCatalog User Data/AvatarThumbnailCacheDatabase.asset";
+        public static string ASSET_FILE_PATH = "Assets/Avatar Catalog User Data/AvatarThumbnailCacheDatabase.asset";
 
         [SerializeField]
         private List<CachedAvatarThumbnail> _thumbnails = new List<CachedAvatarThumbnail>();
@@ -32,7 +32,7 @@ namespace MitarashiDango.AvatarCatalog
                 }
             }
 
-            path = $"Assets/AvatarCatalog User Data/Cache/AvatarThumbnails/thumbnail_{avatarGlobalObjectId.assetGUID}_{avatarGlobalObjectId.targetObjectId}_{avatarGlobalObjectId.targetPrefabId}_{new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()}.png";
+            path = $"Assets/Avatar Catalog User Data/Cache/AvatarThumbnails/thumbnail_{avatarGlobalObjectId.assetGUID}_{avatarGlobalObjectId.targetObjectId}_{avatarGlobalObjectId.targetPrefabId}_{new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds()}.png";
 
             File.WriteAllBytes(path, texture.EncodeToPNG());
             AssetDatabase.ImportAsset(path);

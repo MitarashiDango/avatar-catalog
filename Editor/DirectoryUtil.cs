@@ -7,24 +7,24 @@ namespace MitarashiDango.AvatarCatalog
     {
         public static bool IsUserDataFolderExists()
         {
-            return AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data");
+            return AssetDatabase.IsValidFolder("Assets/Avatar Catalog User Data");
         }
 
         public static bool IsCacheFolderExists()
         {
-            return AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data/Cache");
+            return AssetDatabase.IsValidFolder("Assets/Avatar Catalog User Data/Cache");
         }
 
         public static bool IsAvatarThumbnailsCacheFolderExists()
         {
-            return AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data/Cache/AvatarThumbnails");
+            return AssetDatabase.IsValidFolder("Assets/Avatar Catalog User Data/Cache/AvatarThumbnails");
         }
 
         public static void CreateUserDataFolder()
         {
             if (!IsUserDataFolderExists())
             {
-                AssetDatabase.CreateFolder("Assets", "AvatarCatalog User Data");
+                AssetDatabase.CreateFolder("Assets", "Avatar Catalog User Data");
             }
         }
 
@@ -32,7 +32,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             if (!IsCacheFolderExists())
             {
-                AssetDatabase.CreateFolder("Assets/AvatarCatalog User Data", "Cache");
+                AssetDatabase.CreateFolder("Assets/Avatar Catalog User Data", "Cache");
             }
         }
 
@@ -40,7 +40,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             if (!IsAvatarThumbnailsCacheFolderExists())
             {
-                AssetDatabase.CreateFolder("Assets/AvatarCatalog User Data/Cache", "AvatarThumbnails");
+                AssetDatabase.CreateFolder("Assets/Avatar Catalog User Data/Cache", "AvatarThumbnails");
             }
         }
     }
