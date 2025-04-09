@@ -1,3 +1,3 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/VIew/GridLayoutListRowContainer.uss?fileID=7433441132597879392&amp;guid=3feac08e7a1d37045aa4305e7d2584e3&amp;type=3#GridLayoutListRowContainer" />
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/View/GridLayoutListRowContainer.uss?fileID=7433441132597879392&amp;guid=3feac08e7a1d37045aa4305e7d2584e3&amp;type=3#GridLayoutListRowContainer" />
 </ui:UXML>

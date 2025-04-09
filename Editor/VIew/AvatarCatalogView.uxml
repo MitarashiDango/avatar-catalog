@@ -1,7 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/VIew/AvatarCatalogView.uss?fileID=7433441132597879392&amp;guid=f22464d79547e7f499a0a1a485b5ec61&amp;type=3#AvatarCatalogView" />
-    <ui:Template src="AvatarCatalogHeader.uxml" name="AvatarCatalogHeader"/>
-    <ui:Instance template="AvatarCatalogHeader" name="avatar-catalog-header"/>
+    <ui:Template name="AvatarCatalogHeader" src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/View/AvatarCatalogHeader.uxml?fileID=9197481963319205126&amp;guid=dc3ffeb80e22efe4394eaa01ff6db97c&amp;type=3#AvatarCatalogHeader" />
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/View/AvatarCatalogView.uss?fileID=7433441132597879392&amp;guid=f22464d79547e7f499a0a1a485b5ec61&amp;type=3#AvatarCatalogView" />
+    <ui:Instance template="AvatarCatalogHeader" name="avatar-catalog-header" />
     <ui:ScrollView name="avatar-catalog-grid-view" class="scroll-view">
         <ui:VisualElement name="items-container" />
     </ui:ScrollView>

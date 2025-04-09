@@ -1,18 +1,19 @@
 :root {
-  flex-grow: 1;
-  flex-direction: column;
+    flex-grow: 1;
+    flex-direction: column;
 }
 
 .scroll-view {
-  flex-grow: 1;
-  background-color: rgb(51, 51, 51);
-  margin-top: 0;
-  margin-bottom: 0;
+    flex-grow: 1;
+    background-color: rgb(51, 51, 51);
+    margin-top: 0;
+    margin-bottom: 0;
+    flex-direction: column;
 }
 
 #items-container {
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-around;
-  padding-top: 10;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    padding-top: 10;
 }
