@@ -357,6 +357,9 @@ namespace MitarashiDango.AvatarCatalog
 
                     gridLayoutItem.RegisterCallback<ClickEvent>((e) => OnAvatarItem_Click(e, currentAvatar));
 
+                    var manipulator = getAvatarCatalogItemContextualMenu(currentAvatar);
+                    manipulator.target = gridLayoutItem;
+
                     rowContainer.Add(gridLayoutItem);
                 }
 
@@ -377,6 +380,25 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
+        private ContextualMenuManipulator getAvatarCatalogItemContextualMenu(AvatarCatalog.Avatar avatar)
+        {
+            var manipulator = new ContextualMenuManipulator(e =>
+            {
+                e.menu.AppendAction("Switch to active", action =>
+                {
+                    ChangeToActiveAvatar(avatar);
+                });
+
+                e.menu.AppendAction("Update avatar thumbnail image", action =>
+                {
+                    UpdateAvatarThumbnail(avatar);
+                    ReloadAvatars();
+                });
+            });
+
+            return manipulator;
+        }
+
         private List<SceneAsset> GetAllScenes()
         {
             return AssetDatabase.FindAssets("t:SceneAsset", new[] { "Assets" })
@@ -390,18 +412,78 @@ namespace MitarashiDango.AvatarCatalog
         {
             if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
             {
-                if (EditorApplication.isPlayingOrWillChangePlaymode)
+                ChangeToActiveAvatar(avatar);
+            }
+        }
+
+        private void ChangeToActiveAvatar(AvatarCatalog.Avatar avatar)
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorUtility.DisplayDialog("情報", "Play Mode実行中はアバターの切り替えは行えません", "OK");
+                return;
+            }
+
+            var avatarObject = ChangeSelectingObject(avatar);
+            if (avatarObject != null)
+            {
+                Debug.Log("Selected: " + avatarObject.name);
+            }
+        }
+
+        private void UpdateAvatarThumbnail(AvatarCatalog.Avatar avatar)
+        {
+            InitializeAvatarRenderer();
+
+            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scene = SceneManager.GetSceneByPath(scenePath);
+            try
+            {
+                if (!scene.isLoaded)
                 {
-                    EditorUtility.DisplayDialog("情報", "Play Mode実行中はアバターの切り替えは行えません", "OK");
+                    if (!EditorSceneManager.SaveOpenScenes())
+                    {
+                        Debug.Log("failed to save open scene");
+                        return;
+                    }
+
+                    scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+                }
+
+                if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
+                {
+                    Debug.LogWarning("Failed to parse GlobalObjectId");
                     return;
                 }
 
-                var avatarObject = ChangeSelectingObject(avatar);
-                if (avatarObject != null)
+                var targetAvatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
+                if (targetAvatarObject == null)
                 {
-                    Debug.Log("Selected: " + avatarObject.name);
+                    Debug.Log("failed to find avatar object");
+                    return;
+                }
+
+                var avatarDescriptor = targetAvatarObject.GetComponent<VRCAvatarDescriptor>();
+                if (avatarDescriptor == null)
+                {
+                    Debug.Log("failed to find VRCAvatarDescriptor component");
+                    return;
+                }
+
+                var thumbnail = _avatarRenderer.Render(targetAvatarObject, GetCameraSetting(), 256, 256, null, null, false);
+                _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
+                _avatarThumbnailCacheDatabase.Save();
+            }
+            finally
+            {
+                if (scene != EditorSceneManager.GetActiveScene())
+                {
+                    EditorSceneManager.CloseScene(scene, true);
                 }
             }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
 
         private AvatarRenderer.CameraSetting GetCameraSetting()
@@ -413,6 +495,21 @@ namespace MitarashiDango.AvatarCatalog
             cameraSetting.Scale = new Vector3(1, 1, 1);
 
             return cameraSetting;
+        }
+
+        public void ReloadAvatars()
+        {
+            LoadAssetFiles();
+            UpdateGridLayout();
+
+            if (_avatarCatalog != null)
+            {
+                ShowAvatarCatalogView();
+            }
+            else
+            {
+                ShowAvatarCatalogInitialSetupView();
+            }
         }
 
         private void OnRunInitialSetupButton_Click()
