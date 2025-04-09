@@ -44,7 +44,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private string _searchText = "";
 
-        [MenuItem("Tools/AvatarCatalog/Avatar List")]
+        [MenuItem("Tools/Avatar Catalog/Avatar List")]
         public static void ShowWindow()
         {
             var window = GetWindow<AvatarCatalogWindow>("Avatar List");

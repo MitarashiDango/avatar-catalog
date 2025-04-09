@@ -1,4 +1,4 @@
-# AvatarCatalog
+# Avatar Catalog
 
 ## これはなに？
 
@@ -22,5 +22,5 @@ Unity Editor 上で VRChat 向けにセットアップされたアバターデ�
 
 1. リリース一覧より最新の unitypackage ファイルをダウンロードする
 2. ダウンロードしたファイルを Unity へドラッグ＆ドロップし、インポートする
-3. ウィンドウメニューの項目を `Tools > AvatarCatalog > Avatar List` の順にクリックし、アバターリストを開く
+3. ウィンドウメニューの項目を `Tools > Avatar Catalog > Avatar List` の順にクリックし、アバターリストを開く
 4. 「初回セットアップする」ボタンをクリックする
