@@ -44,10 +44,10 @@ namespace MitarashiDango.AvatarCatalog
 
         private string _searchText = "";
 
-        [MenuItem("Tools/Avatar Catalog/Avatars List")]
+        [MenuItem("Tools/AvatarCatalog/Avatar List")]
         public static void ShowWindow()
         {
-            var window = GetWindow<AvatarCatalogWindow>("Avatars List");
+            var window = GetWindow<AvatarCatalogWindow>("Avatar List");
             window.minSize = new Vector2(800, 600);
         }
 
