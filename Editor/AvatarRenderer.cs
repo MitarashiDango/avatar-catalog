@@ -50,7 +50,7 @@ namespace MitarashiDango.AvatarCatalog
             _previewRenderUtility.BeginPreview(new Rect(0, 0, renderTexture.width, renderTexture.height), GUIStyle.none);
 
             SetupDefaultLights();
-            SetupCamera(renderTexture, cameraSetting, allowHDR);
+            SetupCamera(renderTexture, avatarRootObject, cameraSetting, allowHDR);
 
             if (avatarRootObject != null)
             {
@@ -133,7 +133,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void SetupCamera(RenderTexture renderTexture, CameraSetting cameraSetting, bool allowHDR)
+        private void SetupCamera(RenderTexture renderTexture, GameObject avatarRootObject, CameraSetting cameraSetting, bool allowHDR)
         {
             _previewRenderUtility.camera.clearFlags = CameraClearFlags.SolidColor;
             _previewRenderUtility.camera.backgroundColor = cameraSetting.BackgroundColor;
@@ -147,10 +147,39 @@ namespace MitarashiDango.AvatarCatalog
             _previewRenderUtility.camera.farClipPlane = 100;
             _previewRenderUtility.camera.nearClipPlane = 0.001f;
             _previewRenderUtility.camera.transform.localScale = cameraSetting.Scale;
-            _previewRenderUtility.camera.transform.position = cameraSetting.Position;
             _previewRenderUtility.camera.transform.rotation = cameraSetting.Rotation;
             _previewRenderUtility.camera.targetTexture = renderTexture;
             _previewRenderUtility.camera.pixelRect = new Rect(0, 0, renderTexture.width, renderTexture.height);
+            _previewRenderUtility.camera.transform.position = GetCameraPosition(avatarRootObject, cameraSetting.PositionOffset);
+        }
+
+        private Bounds GetObjectBounds(GameObject obj)
+        {
+            Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+
+            if (renderers.Length == 0)
+            {
+                return new Bounds(obj.transform.position, Vector3.zero);
+            }
+
+            Bounds bounds = new Bounds(obj.transform.position, Vector3.zero);
+            foreach (Renderer renderer in renderers)
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+
+            return bounds;
+        }
+
+        private Vector3 GetCameraPosition(GameObject avatarRootObject, Vector3 positionOffset)
+        {
+            var bounds = GetObjectBounds(avatarRootObject);
+            var position = bounds.center;
+            var maxBoundsSize = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            var cameraDistance = maxBoundsSize / (2.0f * Mathf.Tan(_previewRenderUtility.camera.fieldOfView * 0.5f * Mathf.Deg2Rad));
+            position -= _previewRenderUtility.camera.transform.forward * cameraDistance;
+            position += positionOffset;
+            return position;
         }
 
         public void InitializePreviewRenderUtility()
@@ -186,22 +215,22 @@ namespace MitarashiDango.AvatarCatalog
         public class CameraSetting
         {
             public Vector3 Scale { get; set; }
-            public Vector3 Position { get; set; }
+            public Vector3 PositionOffset { get; set; }
             public Quaternion Rotation { get; set; }
             public Color BackgroundColor { get; set; }
 
             public CameraSetting()
             {
                 Scale = new Vector3(1, 1, 1);
-                Position = new Vector3(0, 0, 0);
+                PositionOffset = new Vector3(0, 0, 0);
                 Rotation = Quaternion.Euler(0, 0, 0);
                 BackgroundColor = Color.white;
             }
 
-            public CameraSetting(Vector3 scale, Vector3 position, Quaternion rotation, Color backgroundColor)
+            public CameraSetting(Vector3 scale, Vector3 positionOffset, Quaternion rotation, Color backgroundColor)
             {
                 Scale = scale;
-                Position = position;
+                PositionOffset = positionOffset;
                 Rotation = rotation;
                 BackgroundColor = backgroundColor;
             }

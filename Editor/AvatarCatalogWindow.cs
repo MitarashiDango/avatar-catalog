@@ -11,6 +11,13 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarCatalogWindow : EditorWindow
     {
+        // TODO 設定で調整可能にする
+        // MEMO 設定の持たせ方は要検討
+        private static readonly float X_OFFSET = 0f;
+        private static readonly float Y_OFFSET = 0f;
+        private static readonly float Z_OFFSET = 0f;
+        private static readonly Color BACKGROUND_COLOR = Color.white;
+
         private static readonly int GRID_ITEM_SIZE = 160;
         private static readonly int MIN_COLUMN_SPACING = 10;
         private static readonly char[] SEARCH_WORDS_DELIMITER_CHARS = { ' ' };
@@ -95,13 +102,6 @@ namespace MitarashiDango.AvatarCatalog
 
         private void RefreshAvatars()
         {
-            // TODO 設定で調整可能にする
-            // MEMO 設定の持たせ方は要検討
-            var xOffset = 0f;
-            var yOffset = -0.5f;
-            var zOffset = 5.2f;
-            var backgroundColor = Color.white;
-
             CreateFolders();
             CreateOrLoadAssetFiles();
             InitializeAvatarRenderer();
@@ -135,12 +135,7 @@ namespace MitarashiDango.AvatarCatalog
                         continue;
                     }
 
-                    var cameraSetting = new AvatarRenderer.CameraSetting();
-                    cameraSetting.Position = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
-                    cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
-                    cameraSetting.Scale = new Vector3(1, 1, 1);
-
-                    var thumbnail = _avatarRenderer.Render(avatarObject, cameraSetting, 256, 256, null, null, false);
+                    var thumbnail = _avatarRenderer.Render(avatarObject, GetCameraSetting(), 256, 256, null, null, false);
                     thumbnail = _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
                     EditorUtility.SetDirty(_avatarThumbnailCacheDatabase);
                 }
@@ -303,7 +298,7 @@ namespace MitarashiDango.AvatarCatalog
             gridContainer.Clear();
 
             var scrollViewWidth = rootVisualElement.contentRect.width;
-            if (float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
+            if (_avatarCatalog == null || float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
             {
                 return;
             }
@@ -407,6 +402,17 @@ namespace MitarashiDango.AvatarCatalog
                     Debug.Log("Selected: " + avatarObject.name);
                 }
             }
+        }
+
+        private AvatarRenderer.CameraSetting GetCameraSetting()
+        {
+            var cameraSetting = new AvatarRenderer.CameraSetting();
+            cameraSetting.BackgroundColor = BACKGROUND_COLOR;
+            cameraSetting.PositionOffset = new Vector3(X_OFFSET, Y_OFFSET, Z_OFFSET);
+            cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
+            cameraSetting.Scale = new Vector3(1, 1, 1);
+
+            return cameraSetting;
         }
 
         private void OnRunInitialSetupButton_Click()
