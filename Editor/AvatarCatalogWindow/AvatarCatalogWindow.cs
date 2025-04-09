@@ -125,7 +125,7 @@ namespace MitarashiDango.AvatarCatalog
                         continue;
                     }
 
-                    var thumbnail = _avatarRenderer.Render(avatarObject, GetCameraSetting(), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
+                    var thumbnail = _avatarRenderer.Render(avatarObject, GetCameraSetting(avatarObject), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
                     thumbnail = _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
                     EditorUtility.SetDirty(_avatarThumbnailCacheDatabase);
                 }
@@ -389,6 +389,11 @@ namespace MitarashiDango.AvatarCatalog
                     UpdateAvatarThumbnail(avatar);
                     ReloadAvatars();
                 });
+
+                e.menu.AppendAction("Add avatar thumbnail settings component", action =>
+                {
+                    AddAvatarCatalogThumbnailSettingsComponent(avatar);
+                });
             });
 
             return manipulator;
@@ -465,7 +470,7 @@ namespace MitarashiDango.AvatarCatalog
                     return;
                 }
 
-                var thumbnail = _avatarRenderer.Render(targetAvatarObject, GetCameraSetting(), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
+                var thumbnail = _avatarRenderer.Render(targetAvatarObject, GetCameraSetting(targetAvatarObject), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
                 _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
                 _avatarThumbnailCacheDatabase.Save();
             }
@@ -481,11 +486,63 @@ namespace MitarashiDango.AvatarCatalog
             AssetDatabase.Refresh();
         }
 
-        private AvatarRenderer.CameraSetting GetCameraSetting()
+        private void AddAvatarCatalogThumbnailSettingsComponent(AvatarCatalog.Avatar avatar)
         {
+            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scene = SceneManager.GetSceneByPath(scenePath);
+            try
+            {
+                if (!scene.isLoaded)
+                {
+                    if (!EditorSceneManager.SaveOpenScenes())
+                    {
+                        Debug.Log("failed to save open scene");
+                        return;
+                    }
+
+                    scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+                }
+
+                if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
+                {
+                    Debug.LogWarning("Failed to parse GlobalObjectId");
+                    return;
+                }
+
+                var avatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
+                if (avatarObject == null)
+                {
+                    Debug.Log("failed to find avatar object");
+                    return;
+                }
+
+                var component = avatarObject.GetComponent<AvatarCatalogThumbnailSettings>();
+                if (component != null)
+                {
+                    return;
+                }
+
+                avatarObject.AddComponent<AvatarCatalogThumbnailSettings>();
+                EditorUtility.SetDirty(avatarObject);
+
+                EditorSceneManager.SaveScene(scene);
+            }
+            finally
+            {
+                if (scene != EditorSceneManager.GetActiveScene())
+                {
+                    EditorSceneManager.CloseScene(scene, true);
+                }
+            }
+        }
+
+        private AvatarRenderer.CameraSetting GetCameraSetting(GameObject avatarObject)
+        {
+            var avatarCatalogThumbnailSettings = avatarObject.GetComponent<AvatarCatalogThumbnailSettings>();
+
             var cameraSetting = new AvatarRenderer.CameraSetting();
             cameraSetting.BackgroundColor = BACKGROUND_COLOR;
-            cameraSetting.PositionOffset = new Vector3(X_OFFSET, Y_OFFSET, Z_OFFSET);
+            cameraSetting.PositionOffset = avatarCatalogThumbnailSettings != null && avatarCatalogThumbnailSettings.cameraPositionOffset != null ? avatarCatalogThumbnailSettings.cameraPositionOffset : new Vector3(X_OFFSET, Y_OFFSET, Z_OFFSET);
             cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
             cameraSetting.Scale = new Vector3(1, 1, 1);
 
