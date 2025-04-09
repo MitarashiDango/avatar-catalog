@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/View/AvatarCatalogHeader.uss?fileID=7433441132597879392&amp;guid=fa12c625a17aedf4aa281a2926bcccc9&amp;type=3#AvatarCatalogHeader" />
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarCatalogWindow/AvatarCatalogHeader.uss?fileID=7433441132597879392&amp;guid=fa12c625a17aedf4aa281a2926bcccc9&amp;type=3#AvatarCatalogHeader" />
     <ui:Image name="search-icon" class="search-icon" />
     <ui:TextField name="search-text-field" class="search-text-field" />
     <ui:Button name="reload-avatar-catalog-button" class="reload-avatar-catalog-button">
