@@ -16,9 +16,10 @@ namespace MitarashiDango.AvatarCatalog
         private static readonly float X_OFFSET = 0f;
         private static readonly float Y_OFFSET = 0f;
         private static readonly float Z_OFFSET = 0f;
-        private static readonly Color BACKGROUND_COLOR = Color.white;
+        private static readonly Color BACKGROUND_COLOR = Color.clear;
 
-        private static readonly int GRID_ITEM_SIZE = 160;
+        private static readonly int THUMBNAIL_IMAGE_SIZE = 512;
+        private static readonly int GRID_ITEM_SIZE = 160;   // 128 ～ 256
         private static readonly int MIN_COLUMN_SPACING = 10;
         private static readonly char[] SEARCH_WORDS_DELIMITER_CHARS = { ' ' };
 
@@ -124,7 +125,7 @@ namespace MitarashiDango.AvatarCatalog
                         continue;
                     }
 
-                    var thumbnail = _avatarRenderer.Render(avatarObject, GetCameraSetting(), 256, 256, null, null, false);
+                    var thumbnail = _avatarRenderer.Render(avatarObject, GetCameraSetting(), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
                     thumbnail = _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
                     EditorUtility.SetDirty(_avatarThumbnailCacheDatabase);
                 }
@@ -305,7 +306,7 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - (MIN_COLUMN_SPACING * 2)) / GRID_ITEM_SIZE));
+            var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - MIN_COLUMN_SPACING) / (GRID_ITEM_SIZE + MIN_COLUMN_SPACING)));
             var rows = Mathf.CeilToInt((float)totalItems / maxColumns);
 
             var totalRowWidth = maxColumns * GRID_ITEM_SIZE;
@@ -331,8 +332,8 @@ namespace MitarashiDango.AvatarCatalog
                     }
 
                     var gridLayoutItem = _avatarCatalogGridLayoutListItemAsset.CloneTree();
-                    gridLayoutItem.style.width = GRID_ITEM_SIZE;
                     gridLayoutItem.style.height = GRID_ITEM_SIZE;
+                    gridLayoutItem.style.width = GRID_ITEM_SIZE;
 
                     var avatarThumbnailImage = gridLayoutItem.Q<Image>("avatar-thumbnail-image");
                     var thumbnailTexture = _avatarThumbnailCacheDatabase.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
@@ -340,6 +341,11 @@ namespace MitarashiDango.AvatarCatalog
                     {
                         avatarThumbnailImage.image = thumbnailTexture;
                     }
+
+                    avatarThumbnailImage.RegisterCallback<GeometryChangedEvent>(e =>
+                    {
+                        avatarThumbnailImage.style.width = e.newRect.height;
+                    });
 
                     var avatarNameLabel = gridLayoutItem.Q<Label>("avatar-name-label");
                     avatarNameLabel.text = currentAvatar.avatarName;
@@ -459,7 +465,7 @@ namespace MitarashiDango.AvatarCatalog
                     return;
                 }
 
-                var thumbnail = _avatarRenderer.Render(targetAvatarObject, GetCameraSetting(), 256, 256, null, null, false);
+                var thumbnail = _avatarRenderer.Render(targetAvatarObject, GetCameraSetting(), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
                 _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
                 _avatarThumbnailCacheDatabase.Save();
             }
