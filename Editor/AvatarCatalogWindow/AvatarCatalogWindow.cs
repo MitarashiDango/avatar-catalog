@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
@@ -248,10 +249,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var avatarCatalogHeader = root.Q<VisualElement>("avatar-catalog-header");
 
-            var searchIcon = avatarCatalogHeader.Q<Image>("search-icon");
-            searchIcon.image = EditorGUIUtility.IconContent("Search On Icon").image;
-
-            var searchTextField = avatarCatalogHeader.Q<TextField>("search-text-field");
+            var searchTextField = avatarCatalogHeader.Q<ToolbarSearchField>("search-text-field");
             searchTextField.value = _searchText;
             searchTextField.RegisterValueChangedCallback(evt =>
             {
