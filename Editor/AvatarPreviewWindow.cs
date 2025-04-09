@@ -4,7 +4,6 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
-using VRC.SDK3.Avatars.Components;
 
 namespace MitarashiDango.AvatarCatalog
 {
@@ -19,9 +18,9 @@ namespace MitarashiDango.AvatarCatalog
         private Dictionary<string, float> _defaultBlendShapes = new Dictionary<string, float>();
         private Dictionary<string, float> _animationClipBlendShapes = new Dictionary<string, float>();
 
-        private float _xOffset = 0.0f;
+        private float _xOffset = 0;
         private float _yOffset = 0;
-        private float _zOffset = 3f;
+        private float _zOffset = 0;
         private Color _backgroundColor = Color.white;
 
         [MenuItem("Tools/Avatar Catalog/Avatar Preview")]
@@ -85,21 +84,21 @@ namespace MitarashiDango.AvatarCatalog
             var imageRect = EditorGUILayout.GetControlRect(false, 192);
             imageRect.width = 192;
 
-            var newXOffset = EditorGUILayout.Slider(_xOffset, -10, 10);
+            var newXOffset = EditorGUILayout.Slider(_xOffset, -20, 20);
             if (_xOffset != newXOffset)
             {
                 isTextureDirty = true;
                 _xOffset = newXOffset;
             }
 
-            var newYOffset = EditorGUILayout.Slider(_yOffset, -10, 10);
+            var newYOffset = EditorGUILayout.Slider(_yOffset, -20, 20);
             if (_yOffset != newYOffset)
             {
                 isTextureDirty = true;
                 _yOffset = newYOffset;
             }
 
-            var newZOffset = EditorGUILayout.Slider(_zOffset, -10, 10);
+            var newZOffset = EditorGUILayout.Slider(_zOffset, -20, 20);
             if (_zOffset != newZOffset)
             {
                 isTextureDirty = true;
@@ -153,14 +152,10 @@ namespace MitarashiDango.AvatarCatalog
 
         private void RenderSampleTexture(float xOffset, float yOffset, float zOffset, Color backgroundColor)
         {
-            var avatarDescriptor = _gameObject.GetComponent<VRCAvatarDescriptor>();
-            if (avatarDescriptor != null)
-            {
-                _cameraSetting.BackgroundColor = backgroundColor;
-                _cameraSetting.Position = new Vector3(xOffset, avatarDescriptor.ViewPosition.y + yOffset, avatarDescriptor.ViewPosition.z + zOffset);
-                _cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
-                _cameraSetting.Scale = new Vector3(1, 1, 1);
-            }
+            _cameraSetting.BackgroundColor = backgroundColor;
+            _cameraSetting.PositionOffset = new Vector3(xOffset, yOffset, zOffset);
+            _cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
+            _cameraSetting.Scale = new Vector3(1, 1, 1);
 
             if (_renderTexture != null)
             {
