@@ -72,20 +72,9 @@ namespace MitarashiDango.AvatarCatalog
 
         private void CreateFolders()
         {
-            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data"))
-            {
-                AssetDatabase.CreateFolder("Assets", "AvatarCatalog User Data");
-            }
-
-            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data/Cache"))
-            {
-                AssetDatabase.CreateFolder("Assets/AvatarCatalog User Data", "Cache");
-            }
-
-            if (!AssetDatabase.IsValidFolder("Assets/AvatarCatalog User Data/Cache/AvatarThumbnails"))
-            {
-                AssetDatabase.CreateFolder("Assets/AvatarCatalog User Data/Cache", "AvatarThumbnails");
-            }
+            DirectoryUtil.CreateUserDataFolder();
+            DirectoryUtil.CreateCacheFolder();
+            DirectoryUtil.CreateAvatarThumbnailsCacheFolder();
         }
 
         private void CreateOrLoadAssetFiles()
