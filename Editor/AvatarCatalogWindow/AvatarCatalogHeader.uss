@@ -1,6 +1,7 @@
 :root {
   flex-direction: row;
   justify-content: space-between;
+  flex-shrink: 0;
   padding-top: 1;
   padding-bottom: 1;
   background-color: rgb(60, 60, 60);
