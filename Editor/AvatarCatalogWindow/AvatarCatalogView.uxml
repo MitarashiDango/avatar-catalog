@@ -2,9 +2,7 @@
     <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarCatalogWindow/AvatarCatalogView.uss?fileID=7433441132597879392&amp;guid=f22464d79547e7f499a0a1a485b5ec61&amp;type=3#AvatarCatalogView" />
     <uie:Toolbar name="avatar-catalog-header" class="avatar-catalog-header">
         <uie:ToolbarSearchField name="search-text-field" class="search-text-field" />
-        <ui:Button name="reload-avatar-catalog-button" class="reload-avatar-catalog-button">
-            <ui:Image name="reload-avatar-catalog-button-icon" class="header-item-icon" />
-        </ui:Button>
+        <uie:ToolbarMenu name="reload-avatar-catalog-menu" text="Menu" />
     </uie:Toolbar>
     <ui:ScrollView name="avatar-catalog-grid-view" class="scroll-view">
         <ui:VisualElement name="items-container" />

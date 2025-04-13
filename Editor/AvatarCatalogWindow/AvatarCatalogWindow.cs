@@ -92,7 +92,7 @@ namespace MitarashiDango.AvatarCatalog
             _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.Load();
         }
 
-        private void RefreshAvatars()
+        private void RefreshAvatars(bool withRefreshThumbnails = false)
         {
             CreateFolders();
             CreateOrLoadAssetFiles();
@@ -122,7 +122,7 @@ namespace MitarashiDango.AvatarCatalog
                         continue;
                     }
 
-                    if (_avatarThumbnailCacheDatabase.IsExists(avatarGlobalObjectId))
+                    if (_avatarThumbnailCacheDatabase.IsExists(avatarGlobalObjectId) && !withRefreshThumbnails)
                     {
                         continue;
                     }
@@ -138,6 +138,7 @@ namespace MitarashiDango.AvatarCatalog
                 }
             }
 
+            AssetDatabase.Refresh();
             AssetDatabase.SaveAssets();
 
             CreateOrLoadAssetFiles();
@@ -248,7 +249,7 @@ namespace MitarashiDango.AvatarCatalog
                 LoadAssetFiles();
             }
 
-            var avatarCatalogHeader = root.Q<VisualElement>("avatar-catalog-header");
+            var avatarCatalogHeader = root.Q<Toolbar>("avatar-catalog-header");
             var avatarCatalogFooter = root.Q<VisualElement>("avatar-catalog-footer");
 
             var searchTextField = avatarCatalogHeader.Q<ToolbarSearchField>("search-text-field");
@@ -259,12 +260,9 @@ namespace MitarashiDango.AvatarCatalog
                 UpdateGridLayout();
             });
 
-            var reloadAvatarCatalogButton = avatarCatalogHeader.Q<Button>("reload-avatar-catalog-button");
-            reloadAvatarCatalogButton.RegisterCallback<ClickEvent>((e) => OnReloadAvatarListButton_Click());
-            reloadAvatarCatalogButton.tooltip = "アバター一覧を更新";
-
-            var reloadAvatarCatalogButtonIcon = avatarCatalogHeader.Q<Image>("reload-avatar-catalog-button-icon");
-            reloadAvatarCatalogButtonIcon.image = EditorGUIUtility.IconContent("Refresh").image;
+            var reloadAvatarCatalogMenu = avatarCatalogHeader.Q<ToolbarMenu>("reload-avatar-catalog-menu");
+            reloadAvatarCatalogMenu.menu.AppendAction("アバター一覧を更新", action => ReloadAvatarList());
+            reloadAvatarCatalogMenu.menu.AppendAction("アバター一覧を更新（サムネイル画像再生成あり）", action => ReloadAvatarList(true));
 
             var resizeGridItemSlider = avatarCatalogFooter.Q<Slider>("resize-grid-item-slider");
             resizeGridItemSlider.value = _gridItemSize;
@@ -410,6 +408,12 @@ namespace MitarashiDango.AvatarCatalog
                 .Select(path => AssetDatabase.LoadAssetAtPath<SceneAsset>(path))
                 .Where(asset => asset != null)
                 .ToList();
+        }
+
+        private void ReloadAvatarList(bool withRefreshThumbnails = false)
+        {
+            RefreshAvatars(withRefreshThumbnails);
+            UpdateGridLayout();
         }
 
         private void OnAvatarItem_Click(ClickEvent e, AvatarCatalog.Avatar avatar)
@@ -581,12 +585,6 @@ namespace MitarashiDango.AvatarCatalog
             {
                 ShowAvatarCatalogInitialSetupView();
             }
-        }
-
-        private void OnReloadAvatarListButton_Click()
-        {
-            RefreshAvatars();
-            UpdateGridLayout();
         }
 
         private void OnResizeGridItemSlider_ValueChanged(ChangeEvent<float> e)
