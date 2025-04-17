@@ -21,12 +21,12 @@ namespace MitarashiDango.AvatarCatalog
 
         private static readonly int THUMBNAIL_IMAGE_SIZE = 512;
         private static readonly int MIN_COLUMN_SPACING = 10;
-        private static readonly float DEFAULT_RESIZE_ICON_SLIDER_VALUE = 160;
         private static readonly char[] SEARCH_WORDS_DELIMITER_CHARS = { ' ' };
 
         private AvatarRenderer _avatarRenderer;
         private AvatarCatalog _avatarCatalog;
         private AvatarThumbnailCacheDatabase _avatarThumbnailCacheDatabase;
+        private Preferences _preferences;
 
         private VisualElement _avatarCatalogView;
         private VisualElement _avatarCatalogInitialSetupView;
@@ -44,7 +44,7 @@ namespace MitarashiDango.AvatarCatalog
         private VisualTreeAsset _gridLayoutListRowContainerAsset;
 
         private string _searchText = "";
-        private float _gridItemSize = DEFAULT_RESIZE_ICON_SLIDER_VALUE;
+        private float _gridItemSize = Preferences.DEFAULT_AVATAR_CATALOG_MAX_ITEM_SIZE;
 
         [MenuItem("Tools/Avatar Catalog/Avatar List")]
         public static void ShowWindow()
@@ -82,14 +82,23 @@ namespace MitarashiDango.AvatarCatalog
 
         private void CreateOrLoadAssetFiles()
         {
+            _preferences = Preferences.CreateOrLoad();
             _avatarCatalog = AvatarCatalog.CreateOrLoad();
             _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.CreateOrLoad();
+            ApplyFromPreferences();
         }
 
         public void LoadAssetFiles()
         {
+            _preferences = Preferences.LoadOrNew();
             _avatarCatalog = AvatarCatalog.Load();
             _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.Load();
+            ApplyFromPreferences();
+        }
+
+        private void ApplyFromPreferences()
+        {
+            _gridItemSize = _preferences.avatarCatalogItemSize;
         }
 
         private void RefreshAvatars(bool withRefreshThumbnails = false)
@@ -267,6 +276,7 @@ namespace MitarashiDango.AvatarCatalog
             var resizeGridItemSlider = avatarCatalogFooter.Q<Slider>("resize-grid-item-slider");
             resizeGridItemSlider.value = _gridItemSize;
             resizeGridItemSlider.RegisterValueChangedCallback((e) => OnResizeGridItemSlider_ValueChanged(e));
+            resizeGridItemSlider.RegisterCallback<PointerCaptureOutEvent>(e => OnResizeGridItemSliderPointerCaptureOut(e));
 
             root.UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
             root.RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
@@ -591,6 +601,12 @@ namespace MitarashiDango.AvatarCatalog
         {
             _gridItemSize = e.newValue;
             UpdateGridLayout();
+        }
+
+        private void OnResizeGridItemSliderPointerCaptureOut(PointerCaptureOutEvent e)
+        {
+            _preferences.avatarCatalogItemSize = _gridItemSize;
+            _preferences.Save();
         }
 
         private void OnGeometryChanged(GeometryChangedEvent e)
