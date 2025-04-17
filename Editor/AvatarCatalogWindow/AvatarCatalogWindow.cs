@@ -53,10 +53,6 @@ namespace MitarashiDango.AvatarCatalog
             window.minSize = new Vector2(800, 600);
         }
 
-        private void OnEnable()
-        {
-        }
-
         private void OnDisable()
         {
             _avatarRenderer?.Dispose();
@@ -246,7 +242,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             var root = _avatarCatalogInitialSetupView;
             var button = root.Q<Button>("run-initial-setup-button");
-            button.RegisterCallback<ClickEvent>(e => OnRunInitialSetupButton_Click());
+            button.RegisterCallback<ClickEvent>(e => OnRunInitialSetupButtonClick());
         }
 
         private void SetupAvatarCatalogView()
@@ -263,11 +259,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var searchTextField = avatarCatalogHeader.Q<ToolbarSearchField>("search-text-field");
             searchTextField.value = _searchText;
-            searchTextField.RegisterValueChangedCallback(evt =>
-            {
-                _searchText = evt.newValue;
-                UpdateGridLayout();
-            });
+            searchTextField.RegisterValueChangedCallback(e => OnSearchTextFieldValueChanged(e));
 
             var reloadAvatarCatalogMenu = avatarCatalogHeader.Q<ToolbarMenu>("reload-avatar-catalog-menu");
             reloadAvatarCatalogMenu.menu.AppendAction("アバター一覧を更新", action => ReloadAvatarList());
@@ -275,7 +267,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var resizeGridItemSlider = avatarCatalogFooter.Q<Slider>("resize-grid-item-slider");
             resizeGridItemSlider.value = _gridItemSize;
-            resizeGridItemSlider.RegisterValueChangedCallback((e) => OnResizeGridItemSlider_ValueChanged(e));
+            resizeGridItemSlider.RegisterValueChangedCallback((e) => OnResizeGridItemSliderValueChanged(e));
             resizeGridItemSlider.RegisterCallback<PointerCaptureOutEvent>(e => OnResizeGridItemSliderPointerCaptureOut(e));
 
             root.UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
@@ -362,7 +354,7 @@ namespace MitarashiDango.AvatarCatalog
                     var avatarNameLabel = gridLayoutItem.Q<Label>("avatar-name-label");
                     avatarNameLabel.text = currentAvatar.avatarName;
 
-                    gridLayoutItem.RegisterCallback<ClickEvent>((e) => OnAvatarItem_Click(e, currentAvatar));
+                    gridLayoutItem.RegisterCallback<ClickEvent>((e) => OnAvatarItemClick(e, currentAvatar));
 
                     var manipulator = getAvatarCatalogItemContextualMenu(currentAvatar);
                     manipulator.target = gridLayoutItem;
@@ -424,14 +416,6 @@ namespace MitarashiDango.AvatarCatalog
         {
             RefreshAvatars(withRefreshThumbnails);
             UpdateGridLayout();
-        }
-
-        private void OnAvatarItem_Click(ClickEvent e, AvatarCatalog.Avatar avatar)
-        {
-            if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
-            {
-                ChangeToActiveAvatar(avatar);
-            }
         }
 
         private void ChangeToActiveAvatar(AvatarCatalog.Avatar avatar)
@@ -582,7 +566,21 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void OnRunInitialSetupButton_Click()
+        private void OnSearchTextFieldValueChanged(ChangeEvent<string> e)
+        {
+            _searchText = e.newValue;
+            UpdateGridLayout();
+        }
+
+        private void OnAvatarItemClick(ClickEvent e, AvatarCatalog.Avatar avatar)
+        {
+            if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
+            {
+                ChangeToActiveAvatar(avatar);
+            }
+        }
+
+        private void OnRunInitialSetupButtonClick()
         {
             RefreshAvatars();
             UpdateGridLayout();
@@ -597,7 +595,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void OnResizeGridItemSlider_ValueChanged(ChangeEvent<float> e)
+        private void OnResizeGridItemSliderValueChanged(ChangeEvent<float> e)
         {
             _gridItemSize = e.newValue;
             UpdateGridLayout();
