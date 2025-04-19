@@ -10,10 +10,29 @@ namespace MitarashiDango.AvatarCatalog
     [Serializable]
     public class AvatarThumbnailCacheDatabase : ScriptableObject
     {
+        private static AvatarThumbnailCacheDatabase _instance;
+
         public static string ASSET_FILE_PATH = "Assets/Avatar Catalog User Data/AvatarThumbnailCacheDatabase.asset";
 
         [SerializeField]
         private List<CachedAvatarThumbnail> _thumbnails = new List<CachedAvatarThumbnail>();
+
+        protected AvatarThumbnailCacheDatabase() : base()
+        {
+        }
+
+        public static AvatarThumbnailCacheDatabase Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    LoadOrNewInstance();
+                }
+
+                return _instance;
+            }
+        }
 
         public Texture2D StoreAvatarThumbnailImage(GlobalObjectId avatarGlobalObjectId, Texture2D texture)
         {
@@ -111,42 +130,63 @@ namespace MitarashiDango.AvatarCatalog
             return true;
         }
 
-        public void Save()
+        public static void Save(bool withSaveAssets = false)
         {
             var asset = AssetDatabase.LoadAssetAtPath<AvatarThumbnailCacheDatabase>(ASSET_FILE_PATH);
-            if (!asset)
+            if (asset == null)
             {
-                AssetDatabase.CreateAsset(this, ASSET_FILE_PATH);
+                AssetDatabase.CreateAsset(Instance, ASSET_FILE_PATH);
             }
             else
             {
-                EditorUtility.CopySerialized(this, asset);
+                EditorUtility.CopySerialized(Instance, asset);
+                EditorUtility.SetDirty(asset);
             }
 
-            AssetDatabase.Refresh();
+            if (withSaveAssets)
+            {
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
         }
 
-        public static AvatarThumbnailCacheDatabase Load()
+        public static void LoadOrNewInstance()
+        {
+            Load();
+
+            if (_instance != null)
+            {
+                return;
+            }
+
+            _instance = CreateInstance<AvatarThumbnailCacheDatabase>();
+        }
+
+        public static void LoadOrCreateFile()
+        {
+            Load();
+
+            if (_instance != null)
+            {
+                return;
+            }
+
+            var asset = ScriptableObject.CreateInstance<AvatarThumbnailCacheDatabase>();
+            AssetDatabase.CreateAsset(asset, ASSET_FILE_PATH);
+
+            _instance = asset;
+        }
+
+        public static void Load()
         {
             var asset = AssetDatabase.LoadAssetAtPath<AvatarThumbnailCacheDatabase>(ASSET_FILE_PATH);
-            if (asset)
+            if (asset != null)
             {
-                return asset;
+                _instance = asset;
+                return;
             }
 
-            return null;
-        }
-
-        public static AvatarThumbnailCacheDatabase CreateOrLoad()
-        {
-            var asset = Load();
-            if (!asset)
-            {
-                asset = ScriptableObject.CreateInstance<AvatarThumbnailCacheDatabase>();
-                AssetDatabase.CreateAsset(asset, ASSET_FILE_PATH);
-            }
-
-            return asset;
+            _instance = null;
         }
 
         [Serializable]
