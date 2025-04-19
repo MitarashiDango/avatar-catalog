@@ -24,7 +24,7 @@ namespace MitarashiDango.AvatarCatalog
         private static readonly char[] SEARCH_WORDS_DELIMITER_CHARS = { ' ' };
 
         private AvatarRenderer _avatarRenderer;
-        private AvatarCatalog _avatarCatalog;
+        private AvatarCatalogDatabase _avatarCatalog;
         private AvatarThumbnailCacheDatabase _avatarThumbnailCacheDatabase;
         private Preferences _preferences;
 
@@ -79,7 +79,7 @@ namespace MitarashiDango.AvatarCatalog
         private void CreateOrLoadAssetFiles()
         {
             _preferences = Preferences.CreateOrLoad();
-            _avatarCatalog = AvatarCatalog.CreateOrLoad();
+            _avatarCatalog = AvatarCatalogDatabase.CreateOrLoad();
             _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.CreateOrLoad();
             ApplyFromPreferences();
         }
@@ -87,7 +87,7 @@ namespace MitarashiDango.AvatarCatalog
         public void LoadAssetFiles()
         {
             _preferences = Preferences.LoadOrNew();
-            _avatarCatalog = AvatarCatalog.Load();
+            _avatarCatalog = AvatarCatalogDatabase.Load();
             _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.Load();
             ApplyFromPreferences();
         }
@@ -117,7 +117,7 @@ namespace MitarashiDango.AvatarCatalog
                 foreach (var avatarObject in avatarObjects)
                 {
                     var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
-                    var avatar = new AvatarCatalog.Avatar(scenes[i], avatarObject);
+                    var avatar = new AvatarCatalogDatabase.Avatar(scenes[i], avatarObject);
                     _avatarCatalog.AddAvatar(avatar);
                     EditorUtility.SetDirty(_avatarCatalog);
 
@@ -149,7 +149,7 @@ namespace MitarashiDango.AvatarCatalog
             CreateOrLoadAssetFiles();
         }
 
-        private GameObject ChangeSelectingObject(AvatarCatalog.Avatar avatar)
+        private GameObject ChangeSelectingObject(AvatarCatalogDatabase.Avatar avatar)
         {
             if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
             {
@@ -379,7 +379,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private ContextualMenuManipulator getAvatarCatalogItemContextualMenu(AvatarCatalog.Avatar avatar)
+        private ContextualMenuManipulator getAvatarCatalogItemContextualMenu(AvatarCatalogDatabase.Avatar avatar)
         {
             var manipulator = new ContextualMenuManipulator(e =>
             {
@@ -418,7 +418,7 @@ namespace MitarashiDango.AvatarCatalog
             UpdateGridLayout();
         }
 
-        private void ChangeToActiveAvatar(AvatarCatalog.Avatar avatar)
+        private void ChangeToActiveAvatar(AvatarCatalogDatabase.Avatar avatar)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
@@ -433,7 +433,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void UpdateAvatarThumbnail(AvatarCatalog.Avatar avatar)
+        private void UpdateAvatarThumbnail(AvatarCatalogDatabase.Avatar avatar)
         {
             InitializeAvatarRenderer();
 
@@ -488,7 +488,7 @@ namespace MitarashiDango.AvatarCatalog
             AssetDatabase.Refresh();
         }
 
-        private void AddAvatarCatalogThumbnailSettingsComponent(AvatarCatalog.Avatar avatar)
+        private void AddAvatarCatalogThumbnailSettingsComponent(AvatarCatalogDatabase.Avatar avatar)
         {
             var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
             var scene = SceneManager.GetSceneByPath(scenePath);
@@ -572,7 +572,7 @@ namespace MitarashiDango.AvatarCatalog
             UpdateGridLayout();
         }
 
-        private void OnAvatarItemClick(ClickEvent e, AvatarCatalog.Avatar avatar)
+        private void OnAvatarItemClick(ClickEvent e, AvatarCatalogDatabase.Avatar avatar)
         {
             if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
             {

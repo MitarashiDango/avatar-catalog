@@ -7,9 +7,9 @@ using UnityEngine;
 namespace MitarashiDango.AvatarCatalog
 {
     [Serializable]
-    public class AvatarCatalog : ScriptableObject
+    public class AvatarCatalogDatabase : ScriptableObject
     {
-        public static string ASSET_FILE_PATH = "Assets/Avatar Catalog User Data/AvatarCatalog.asset";
+        public static string ASSET_FILE_PATH = "Assets/Avatar Catalog User Data/AvatarCatalogDatabase.asset";
 
         [SerializeField]
         private List<Avatar> _avatars = new List<Avatar>();
@@ -42,7 +42,7 @@ namespace MitarashiDango.AvatarCatalog
 
         public void Save()
         {
-            var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalog>(ASSET_FILE_PATH);
+            var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalogDatabase>(ASSET_FILE_PATH);
             if (!asset)
             {
                 AssetDatabase.CreateAsset(this, ASSET_FILE_PATH);
@@ -55,9 +55,9 @@ namespace MitarashiDango.AvatarCatalog
             AssetDatabase.Refresh();
         }
 
-        public static AvatarCatalog Load()
+        public static AvatarCatalogDatabase Load()
         {
-            var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalog>(ASSET_FILE_PATH);
+            var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalogDatabase>(ASSET_FILE_PATH);
             if (asset)
             {
                 return asset;
@@ -66,12 +66,12 @@ namespace MitarashiDango.AvatarCatalog
             return null;
         }
 
-        public static AvatarCatalog CreateOrLoad()
+        public static AvatarCatalogDatabase CreateOrLoad()
         {
             var asset = Load();
             if (!asset)
             {
-                asset = ScriptableObject.CreateInstance<AvatarCatalog>();
+                asset = ScriptableObject.CreateInstance<AvatarCatalogDatabase>();
                 AssetDatabase.CreateAsset(asset, ASSET_FILE_PATH);
             }
 
