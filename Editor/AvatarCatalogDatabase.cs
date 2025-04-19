@@ -9,10 +9,30 @@ namespace MitarashiDango.AvatarCatalog
     [Serializable]
     public class AvatarCatalogDatabase : ScriptableObject
     {
+        private static AvatarCatalogDatabase _instance;
+
         public static string ASSET_FILE_PATH = "Assets/Avatar Catalog User Data/AvatarCatalogDatabase.asset";
 
         [SerializeField]
         private List<Avatar> _avatars = new List<Avatar>();
+
+        protected AvatarCatalogDatabase() : base()
+        {
+        }
+
+        public static AvatarCatalogDatabase Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    LoadOrNewInstance();
+                }
+
+                return _instance;
+            }
+        }
+
         public List<Avatar> avatars
         {
             get => _avatars;
@@ -40,42 +60,69 @@ namespace MitarashiDango.AvatarCatalog
             _avatars.Add(avatar);
         }
 
-        public void Save()
+        public static void Save(bool withSaveAssets = false)
         {
             var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalogDatabase>(ASSET_FILE_PATH);
-            if (!asset)
+            if (asset == null)
             {
-                AssetDatabase.CreateAsset(this, ASSET_FILE_PATH);
+                AssetDatabase.CreateAsset(Instance, ASSET_FILE_PATH);
             }
             else
             {
-                EditorUtility.CopySerialized(this, asset);
+                EditorUtility.CopySerialized(Instance, asset);
+                EditorUtility.SetDirty(asset);
             }
 
-            AssetDatabase.Refresh();
+            if (withSaveAssets)
+            {
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
         }
 
-        public static AvatarCatalogDatabase Load()
+        public static void LoadOrNewInstance()
+        {
+            Load();
+
+            if (_instance != null)
+            {
+                return;
+            }
+
+            _instance = CreateInstance<AvatarCatalogDatabase>();
+        }
+
+        public static void LoadOrCreateFile()
+        {
+            Load();
+
+            if (_instance != null)
+            {
+                return;
+            }
+
+            var asset = ScriptableObject.CreateInstance<AvatarCatalogDatabase>();
+            AssetDatabase.CreateAsset(asset, ASSET_FILE_PATH);
+
+            _instance = asset;
+        }
+
+        public static void Load()
         {
             var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalogDatabase>(ASSET_FILE_PATH);
-            if (asset)
+            if (asset != null)
             {
-                return asset;
+                _instance = asset;
+                return;
             }
 
-            return null;
+            _instance = null;
         }
 
-        public static AvatarCatalogDatabase CreateOrLoad()
+        public static bool IsDatabaseFileExists()
         {
-            var asset = Load();
-            if (!asset)
-            {
-                asset = ScriptableObject.CreateInstance<AvatarCatalogDatabase>();
-                AssetDatabase.CreateAsset(asset, ASSET_FILE_PATH);
-            }
-
-            return asset;
+            var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalogDatabase>(ASSET_FILE_PATH);
+            return asset != null;
         }
 
         [Serializable]

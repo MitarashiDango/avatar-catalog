@@ -24,9 +24,6 @@ namespace MitarashiDango.AvatarCatalog
         private static readonly char[] SEARCH_WORDS_DELIMITER_CHARS = { ' ' };
 
         private AvatarRenderer _avatarRenderer;
-        private AvatarCatalogDatabase _avatarCatalog;
-        private AvatarThumbnailCacheDatabase _avatarThumbnailCacheDatabase;
-        private Preferences _preferences;
 
         private VisualElement _avatarCatalogView;
         private VisualElement _avatarCatalogInitialSetupView;
@@ -53,6 +50,11 @@ namespace MitarashiDango.AvatarCatalog
             window.minSize = new Vector2(800, 600);
         }
 
+        private void OnEnable()
+        {
+            ApplyFromPreferences();
+        }
+
         private void OnDisable()
         {
             _avatarRenderer?.Dispose();
@@ -76,34 +78,17 @@ namespace MitarashiDango.AvatarCatalog
             DirectoryUtil.CreateAvatarThumbnailsCacheFolder();
         }
 
-        private void CreateOrLoadAssetFiles()
-        {
-            _preferences = Preferences.CreateOrLoad();
-            _avatarCatalog = AvatarCatalogDatabase.CreateOrLoad();
-            _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.CreateOrLoad();
-            ApplyFromPreferences();
-        }
-
-        public void LoadAssetFiles()
-        {
-            _preferences = Preferences.LoadOrNew();
-            _avatarCatalog = AvatarCatalogDatabase.Load();
-            _avatarThumbnailCacheDatabase = AvatarThumbnailCacheDatabase.Load();
-            ApplyFromPreferences();
-        }
-
         private void ApplyFromPreferences()
         {
-            _gridItemSize = _preferences.avatarCatalogItemSize;
+            _gridItemSize = Preferences.Instance.avatarCatalogItemSize;
         }
 
         private void RefreshAvatars(bool withRefreshThumbnails = false)
         {
             CreateFolders();
-            CreateOrLoadAssetFiles();
             InitializeAvatarRenderer();
 
-            _avatarCatalog.Clear();
+            AvatarCatalogDatabase.Instance.Clear();
 
             var scenes = GetAllScenes();
             for (var i = 0; i < scenes.Count; i++)
@@ -118,8 +103,7 @@ namespace MitarashiDango.AvatarCatalog
                 {
                     var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
                     var avatar = new AvatarCatalogDatabase.Avatar(scenes[i], avatarObject);
-                    _avatarCatalog.AddAvatar(avatar);
-                    EditorUtility.SetDirty(_avatarCatalog);
+                    AvatarCatalogDatabase.Instance.AddAvatar(avatar);
 
                     if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
                     {
@@ -127,14 +111,13 @@ namespace MitarashiDango.AvatarCatalog
                         continue;
                     }
 
-                    if (_avatarThumbnailCacheDatabase.IsExists(avatarGlobalObjectId) && !withRefreshThumbnails)
+                    if (AvatarThumbnailCacheDatabase.Instance.IsExists(avatarGlobalObjectId) && !withRefreshThumbnails)
                     {
                         continue;
                     }
 
                     var thumbnail = _avatarRenderer.Render(avatarObject, GetCameraSetting(avatarObject), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
-                    thumbnail = _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
-                    EditorUtility.SetDirty(_avatarThumbnailCacheDatabase);
+                    thumbnail = AvatarThumbnailCacheDatabase.Instance.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
                 }
 
                 if (currentScene != EditorSceneManager.GetActiveScene())
@@ -143,10 +126,11 @@ namespace MitarashiDango.AvatarCatalog
                 }
             }
 
-            AssetDatabase.Refresh();
-            AssetDatabase.SaveAssets();
+            AvatarCatalogDatabase.Save();
+            AvatarThumbnailCacheDatabase.Save();
 
-            CreateOrLoadAssetFiles();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
 
         private GameObject ChangeSelectingObject(AvatarCatalogDatabase.Avatar avatar)
@@ -217,7 +201,8 @@ namespace MitarashiDango.AvatarCatalog
             SetupAvatarCatalogInitialSetupView();
             SetupAvatarCatalogView();
 
-            if (_avatarCatalog != null)
+            // とりあえず AvatarCatalogDatabase の実体ファイルの有無で判定する
+            if (AvatarCatalogDatabase.IsDatabaseFileExists())
             {
                 ShowAvatarCatalogView();
             }
@@ -248,11 +233,6 @@ namespace MitarashiDango.AvatarCatalog
         private void SetupAvatarCatalogView()
         {
             var root = _avatarCatalogView;
-
-            if (_avatarCatalog == null)
-            {
-                LoadAssetFiles();
-            }
 
             var avatarCatalogHeader = root.Q<Toolbar>("avatar-catalog-header");
             var avatarCatalogFooter = root.Q<VisualElement>("avatar-catalog-footer");
@@ -291,13 +271,13 @@ namespace MitarashiDango.AvatarCatalog
 
             gridContainer.Clear();
 
+            var avatars = AvatarCatalogDatabase.Instance.avatars;
             var scrollViewWidth = rootVisualElement.contentRect.width;
-            if (_avatarCatalog == null || float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
+            if (avatars.Count == 0 || float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
             {
                 return;
             }
 
-            var avatars = _avatarCatalog.avatars;
             if (_searchText.Length > 0)
             {
                 var searchWords = _searchText.ToLower().Split(SEARCH_WORDS_DELIMITER_CHARS);
@@ -340,7 +320,7 @@ namespace MitarashiDango.AvatarCatalog
                     gridLayoutItem.style.width = _gridItemSize;
 
                     var avatarThumbnailImage = gridLayoutItem.Q<Image>("avatar-thumbnail-image");
-                    var thumbnailTexture = _avatarThumbnailCacheDatabase.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
+                    var thumbnailTexture = AvatarThumbnailCacheDatabase.Instance.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
                     if (thumbnailTexture != null)
                     {
                         avatarThumbnailImage.image = thumbnailTexture;
@@ -473,8 +453,8 @@ namespace MitarashiDango.AvatarCatalog
                 }
 
                 var thumbnail = _avatarRenderer.Render(targetAvatarObject, GetCameraSetting(targetAvatarObject), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
-                _avatarThumbnailCacheDatabase.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
-                _avatarThumbnailCacheDatabase.Save();
+                AvatarThumbnailCacheDatabase.Instance.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
+                AvatarThumbnailCacheDatabase.Save();
             }
             finally
             {
@@ -553,10 +533,14 @@ namespace MitarashiDango.AvatarCatalog
 
         public void ReloadAvatars()
         {
-            LoadAssetFiles();
+            Preferences.LoadOrNewInstance();
+            AvatarCatalogDatabase.LoadOrNewInstance();
+            AvatarThumbnailCacheDatabase.LoadOrNewInstance();
+
             UpdateGridLayout();
 
-            if (_avatarCatalog != null)
+            // とりあえず AvatarCatalogDatabase の実体ファイルの有無で判定する
+            if (AvatarCatalogDatabase.IsDatabaseFileExists())
             {
                 ShowAvatarCatalogView();
             }
@@ -585,7 +569,8 @@ namespace MitarashiDango.AvatarCatalog
             RefreshAvatars();
             UpdateGridLayout();
 
-            if (_avatarCatalog != null)
+            // とりあえず AvatarCatalogDatabase の実体ファイルの有無で判定する
+            if (AvatarCatalogDatabase.IsDatabaseFileExists())
             {
                 ShowAvatarCatalogView();
             }
@@ -603,8 +588,8 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnResizeGridItemSliderPointerCaptureOut(PointerCaptureOutEvent e)
         {
-            _preferences.avatarCatalogItemSize = _gridItemSize;
-            _preferences.Save();
+            Preferences.Instance.avatarCatalogItemSize = _gridItemSize;
+            Preferences.Save(true);
         }
 
         private void OnGeometryChanged(GeometryChangedEvent e)
