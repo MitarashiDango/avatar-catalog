@@ -20,6 +20,11 @@ namespace MitarashiDango.AvatarCatalog
             return AssetDatabase.IsValidFolder("Assets/Avatar Catalog User Data/Cache/AvatarThumbnails");
         }
 
+        public static bool IsAvatarMetadataFolderExists()
+        {
+            return AssetDatabase.IsValidFolder("Assets/Avatar Catalog User Data/AvatarMetadata");
+        }
+
         public static void CreateUserDataFolder()
         {
             if (!IsUserDataFolderExists())
@@ -41,6 +46,14 @@ namespace MitarashiDango.AvatarCatalog
             if (!IsAvatarThumbnailsCacheFolderExists())
             {
                 AssetDatabase.CreateFolder("Assets/Avatar Catalog User Data/Cache", "AvatarThumbnails");
+            }
+        }
+
+        public static void CreateAvatarMetadataFolder()
+        {
+            if (!IsAvatarMetadataFolderExists())
+            {
+                AssetDatabase.CreateFolder("Assets/Avatar Catalog User Data", "AvatarMetadata");
             }
         }
     }
