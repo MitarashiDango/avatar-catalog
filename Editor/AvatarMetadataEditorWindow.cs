@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -15,7 +13,6 @@ namespace MitarashiDango.AvatarCatalog
         private GlobalObjectId _selectedGoid;
         private TextField _currentlyEditingTagField = null;
 
-        // --- UI Element References ---
         private Label _headerLabel;
         private HelpBox _infoBox;
         private VisualElement _editorContainer;
@@ -26,43 +23,37 @@ namespace MitarashiDango.AvatarCatalog
         private Button _saveButton;
         private Button _createButton;
 
-        [MenuItem("Window/Avatar Metadata Editor")]
+        [MenuItem("Tools/Avatar Catalog/Avatar Metadata Editor")]
         public static void ShowWindow()
         {
             AvatarMetadataEditorWindow wnd = GetWindow<AvatarMetadataEditorWindow>();
             wnd.titleContent = new GUIContent("Avatar Metadata");
-            wnd.minSize = new Vector2(300, 250); // ウィンドウの最小サイズ
+            wnd.minSize = new Vector2(300, 250);
         }
 
         public void CreateGUI()
         {
             _rootElement = rootVisualElement;
 
-            // Header
             _headerLabel = new Label("Select an Avatar in Hierarchy") { style = { fontSize = 14, unityFontStyleAndWeight = FontStyle.Bold, marginBottom = 10 } };
             _rootElement.Add(_headerLabel);
 
-            // Info Box
             _infoBox = new HelpBox("No valid avatar selected or metadata needs creation.", HelpBoxMessageType.Info) { style = { display = DisplayStyle.None } };
             _rootElement.Add(_infoBox);
 
-            // Create Button (initially hidden)
             _createButton = new Button(CreateMetadataAsset) { text = "Create Metadata Asset", style = { display = DisplayStyle.None, marginTop = 5 } };
             _rootElement.Add(_createButton);
 
-            // Editor Area (initially hidden or disabled)
             _editorContainer = new VisualElement { name = "metadata-editor-container" };
-            _editorContainer.SetEnabled(false); // Start disabled
+            _editorContainer.SetEnabled(false);
             _rootElement.Add(_editorContainer);
 
-            // Comment
             _editorContainer.Add(new Label("Comment:"));
             _commentField = new TextField() { multiline = true };
             _commentField.style.minHeight = 60;
             _commentField.RegisterValueChangedCallback(evt => MarkChanged());
             _editorContainer.Add(_commentField);
 
-            // Tags
             _editorContainer.Add(new Label("Tags:") { style = { marginTop = 8 } });
             _tagsContainer = new VisualElement() { name = "tags-list", style = { marginLeft = 10 } };
             _editorContainer.Add(_tagsContainer);
@@ -74,35 +65,28 @@ namespace MitarashiDango.AvatarCatalog
             tagInputContainer.Add(_addTagButton);
             _editorContainer.Add(tagInputContainer);
 
-            // Save Button
             _saveButton = new Button(SaveChanges) { text = "Save Changes", style = { marginTop = 15, display = DisplayStyle.None } }; // Start hidden
             _editorContainer.Add(_saveButton);
 
-
-            // --- Event Handling ---
-            // Subscribe to selection changes
             Selection.selectionChanged += OnSelectionChanged;
 
-            // --- Initial Update ---
-            OnSelectionChanged(); // Call once to initialize based on current selection
+
+            OnSelectionChanged();
         }
 
         void OnDestroy()
         {
-            // Unsubscribe when the window is closed
             Selection.selectionChanged -= OnSelectionChanged;
-            // Prompt to save if changes are pending?
             CheckAndPromptSave();
         }
 
         private void OnSelectionChanged()
         {
-            // Check if there were unsaved changes before changing target
             CheckAndPromptSave();
 
             _currentlyEditingTagField = null;
             _selectedGameObject = Selection.activeGameObject;
-            _currentMetadata = null; // Reset current metadata
+            _currentMetadata = null;
             _selectedGoid = default;
 
             if (_selectedGameObject != null && _selectedGameObject.GetComponent<AvatarMetadataComponent>() != null)
@@ -113,22 +97,20 @@ namespace MitarashiDango.AvatarCatalog
 
                 if (_currentMetadata != null)
                 {
-                    // Metadata exists, enable editor and populate fields
                     _infoBox.style.display = DisplayStyle.None;
                     _createButton.style.display = DisplayStyle.None;
                     _editorContainer.SetEnabled(true);
                     _commentField.SetValueWithoutNotify(_currentMetadata.comment ?? "");
                     RefreshTagElements();
-                    _saveButton.style.display = DisplayStyle.None; // Hide save button until changes are made
+                    _saveButton.style.display = DisplayStyle.None;
                 }
                 else
                 {
-                    // Metadata doesn't exist for this valid avatar
                     _infoBox.text = $"Metadata asset not found for {_selectedGameObject.name}. Click below to create one.";
                     _infoBox.messageType = HelpBoxMessageType.Warning;
                     _infoBox.style.display = DisplayStyle.Flex;
-                    _createButton.style.display = DisplayStyle.Flex; // Show create button
-                    _editorContainer.SetEnabled(false); // Disable editor fields
+                    _createButton.style.display = DisplayStyle.Flex;
+                    _editorContainer.SetEnabled(false);
                     _commentField.SetValueWithoutNotify("");
                     _tagsContainer.Clear();
                     _saveButton.style.display = DisplayStyle.None;
@@ -136,7 +118,6 @@ namespace MitarashiDango.AvatarCatalog
             }
             else
             {
-                // No valid avatar selected
                 _headerLabel.text = "Select an Avatar in Hierarchy";
                 _infoBox.text = "Select a GameObject with the 'Avatar Identifier Component' in the Hierarchy view.";
                 _infoBox.messageType = HelpBoxMessageType.Info;
@@ -152,21 +133,20 @@ namespace MitarashiDango.AvatarCatalog
         private void CreateMetadataAsset()
         {
             _currentlyEditingTagField = null;
-            if (_selectedGoid.Equals(default(GlobalObjectId))) return;
+            if (_selectedGoid.Equals(default)) return;
 
             bool created;
             _currentMetadata = AvatarMetadataUtil.LoadOrCreateMetadata(_selectedGoid, out created);
 
             if (created && _currentMetadata != null)
             {
-                // Successfully created, update UI
-                OnSelectionChanged(); // Re-run selection logic to load the new data
-                                      // MarkChanged(); // Optionally mark as changed immediately if you want save button active
+                OnSelectionChanged();
+                MarkChanged();
             }
             else if (!created && _currentMetadata != null)
             {
                 Debug.LogWarning("Metadata already existed. Loaded existing.");
-                OnSelectionChanged(); // Reload UI
+                OnSelectionChanged();
             }
             else
             {
@@ -178,15 +158,13 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-
-        // --- Tag Handling (Similar to Inspector Editor) ---
         private void AddTag()
         {
             if (_currentMetadata == null || string.IsNullOrWhiteSpace(_newTagField.value)) return;
             string newTag = _newTagField.value.Trim();
             if (!_currentMetadata.tags.Contains(newTag))
             {
-                _currentMetadata.tags.Add(newTag); // Directly modify the list
+                _currentMetadata.tags.Add(newTag);
                 AddTagElementUI(newTag);
                 _newTagField.value = "";
                 MarkChanged();
@@ -194,12 +172,11 @@ namespace MitarashiDango.AvatarCatalog
         }
         private void StartEditingTag(VisualElement tagElement, Label tagLabel)
         {
-            // Ensure no other tag is being edited
             if (_currentlyEditingTagField != null && _currentlyEditingTagField.parent != tagElement)
             {
                 VisualElement previousTagElement = _currentlyEditingTagField.parent;
                 CommitEditTag(previousTagElement, _currentlyEditingTagField);
-                if (_currentlyEditingTagField != null) return; // Abort if previous commit failed
+                if (_currentlyEditingTagField != null) return;
             }
 
             string currentTag = tagLabel.text;
@@ -238,19 +215,18 @@ namespace MitarashiDango.AvatarCatalog
             {
                 if (newTag != originalTag)
                 {
-                    // Directly modify _currentMetadata (Undo isn't directly applicable in EditorWindow like in Editor)
                     int index = _currentMetadata.tags.IndexOf(originalTag);
                     if (index != -1)
                     {
                         _currentMetadata.tags[index] = newTag;
-                        tagElement.userData = newTag; // Update userData
-                        MarkChanged(); // Mark window as having changes
+                        tagElement.userData = newTag;
+                        MarkChanged();
                         Debug.Log($"Tag '{originalTag}' changed to '{newTag}'");
                     }
                     else
                     {
                         Debug.LogError($"Original tag '{originalTag}' not found.");
-                        isValid = false; // Treat as failed
+                        isValid = false;
                     }
                 }
                 FinishEditingTag(tagElement, editField, newTag);
@@ -260,7 +236,6 @@ namespace MitarashiDango.AvatarCatalog
                 Debug.LogWarning($"Invalid tag edit: {validationError}");
                 EditorApplication.Beep();
                 editField.Focus();
-                // Keep the edit field open for correction
             }
         }
 
@@ -304,7 +279,6 @@ namespace MitarashiDango.AvatarCatalog
 
         private void AddTagElementUI(string tag)
         {
-            // --- Tag Element Container ---
             var tagElement = new VisualElement()
             {
                 name = "tag-element",
@@ -316,7 +290,6 @@ namespace MitarashiDango.AvatarCatalog
             };
             tagElement.userData = tag;
 
-            // --- Label (Clickable) ---
             var tagLabel = new Label(tag)
             {
                 name = "tag-label",
@@ -331,7 +304,6 @@ namespace MitarashiDango.AvatarCatalog
                 }
             });
 
-            // --- Remove Button ---
             var removeButton = new Button(() =>
             {
                 if (_currentlyEditingTagField?.parent == tagElement)
@@ -346,7 +318,6 @@ namespace MitarashiDango.AvatarCatalog
                 style = { width = 18, height = 18, paddingLeft = 0, paddingRight = 0, marginLeft = 2, alignSelf = Align.Center }
             };
 
-            // --- Edit Field (Initially Hidden) ---
             var editField = new TextField()
             {
                 name = "tag-edit-field",
@@ -365,7 +336,6 @@ namespace MitarashiDango.AvatarCatalog
                 if (_currentlyEditingTagField == editField && !focusMovingToRemoveButton) { CommitEditTag(tagElement, editField); }
             });
 
-            // Add elements
             tagElement.Add(tagLabel);
             tagElement.Add(editField);
             tagElement.Add(removeButton);
@@ -375,34 +345,30 @@ namespace MitarashiDango.AvatarCatalog
         private void RefreshTagElements()
         {
             _tagsContainer?.Clear();
-            _currentlyEditingTagField = null; // Clear editing state on refresh
+            _currentlyEditingTagField = null;
             if (_currentMetadata != null && _currentMetadata.tags != null)
             {
-                // Use ToList() to create a copy for safe iteration during UI rebuild
                 foreach (string tag in _currentMetadata.tags.ToList())
                 {
-                    AddTagElementUI(tag); // Calls the modified method
+                    AddTagElementUI(tag);
                 }
             }
         }
 
-
-        // --- Change Tracking & Saving ---
         private bool _hasUnsavedChanges = false;
 
         private void MarkChanged()
         {
-            // If a tag is currently being edited, commit it before saving
             if (_currentlyEditingTagField != null)
             {
                 CommitEditTag(_currentlyEditingTagField.parent, _currentlyEditingTagField);
-                // We might want to check if commit succeeded before proceeding
             }
 
 
             if (_currentMetadata != null && _hasUnsavedChanges)
             {
                 // ...(rest of SaveChanges method)...
+                SaveChanges();
             }
             else if (!_hasUnsavedChanges)
             {
@@ -464,7 +430,7 @@ namespace MitarashiDango.AvatarCatalog
                     // (Optional: Reload metadata from disk if needed, but OnSelectionChanged should handle this)
                 }
             }
-            // Ensure save button state is reset if changes were discarded or target changed
+
             _hasUnsavedChanges = false;
             _currentlyEditingTagField = null;
             if (_saveButton != null) _saveButton.style.display = DisplayStyle.None;

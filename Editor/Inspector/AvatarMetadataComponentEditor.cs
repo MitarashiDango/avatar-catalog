@@ -9,33 +9,25 @@ namespace MitarashiDango.AvatarCatalog
     [CustomEditor(typeof(AvatarMetadataComponent))]
     public class AvatarMetadataComponentEditor : Editor
     {
-        // --- Private Member Variables ---
         private VisualElement _rootElement;
         private AvatarMetadata _metadata;
         private GlobalObjectId _globalObjectId;
         private bool _isMetadataMissing = false;
 
-        // UI Element References
-        private Label _goidLabel;
         private HelpBox _infoBox;
         private Button _createMetadataButton;
-        private VisualElement _editorContainer; // Holds comment and tag fields
+        private VisualElement _editorContainer;
         private TextField _commentField;
         private VisualElement _tagsContainer;
         private TextField _newTagField;
         private Button _addTagButton;
         private Button _saveMetadataButton;
 
-        // State Tracking
         private TextField _currentlyEditingTagField = null; // 現在編集中のタグフィールド
         private bool _hasUnsavedChanges = false; // 未保存の変更があるか
 
-        // --- Constants ---
         private const string InfoTextStyle = "font-style: italic; color: grey;";
 
-        /// <summary>
-        /// インスペクターのUIを構築・表示します。UI Elementsを使用します。
-        /// </summary>
         public override VisualElement CreateInspectorGUI()
         {
             _rootElement = new VisualElement();
@@ -51,62 +43,104 @@ namespace MitarashiDango.AvatarCatalog
             GameObject targetGo = identifierComponent.gameObject;
             _globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(targetGo);
 
-            // GlobalObjectId 表示
-            _goidLabel = new Label($"Global Object ID: {_globalObjectId}") { style = { unityFontStyleAndWeight = FontStyle.Italic, color = Color.gray, marginBottom = 5 } };
-            _rootElement.Add(_goidLabel);
-
             // メタデータのロード試行
             _metadata = AvatarMetadataUtil.LoadMetadata(_globalObjectId);
-            _isMetadataMissing = (_metadata == null);
+            _isMetadataMissing = _metadata == null;
 
-            // --- UI Elements Setup ---
-            _infoBox = new HelpBox("", HelpBoxMessageType.None) { style = { display = DisplayStyle.None, marginTop = 5, marginBottom = 5 } };
+            _infoBox = new HelpBox("", HelpBoxMessageType.None)
+            {
+                style = {
+                    display = DisplayStyle.None,
+                    marginTop = 5,
+                    marginBottom = 5
+                }
+            };
+
             _rootElement.Add(_infoBox);
 
-            // メタデータ作成ボタン
-            _createMetadataButton = new Button(CreateMetadataAsset) { text = "Create Metadata Asset", style = { display = _isMetadataMissing ? DisplayStyle.Flex : DisplayStyle.None } };
+            _createMetadataButton = new Button(CreateMetadataAsset)
+            {
+                text = "Create Avatar Metadata Asset",
+                style = {
+                    display = _isMetadataMissing ? DisplayStyle.Flex : DisplayStyle.None
+                }
+            };
+
             _rootElement.Add(_createMetadataButton);
 
-            // メタデータ編集コンテナ (メタデータが存在する場合のみ表示)
-            _editorContainer = new VisualElement { name = "metadata-editor-container", style = { display = !_isMetadataMissing ? DisplayStyle.Flex : DisplayStyle.None } };
+            _editorContainer = new VisualElement
+            {
+                name = "metadata-editor-container",
+                style = {
+                    display = !_isMetadataMissing ? DisplayStyle.Flex : DisplayStyle.None
+                }
+            };
             _rootElement.Add(_editorContainer);
 
-            // -- Comment Section --
-            _editorContainer.Add(new Label("Comment:") { style = { unityFontStyleAndWeight = FontStyle.Bold } });
-            _commentField = new TextField() { multiline = true, value = _metadata?.comment ?? "" };
-            _commentField.style.minHeight = 60; // Ensure decent height for multiline
+            _editorContainer.Add(new Label("Comment:")
+            {
+                style = { unityFontStyleAndWeight = FontStyle.Bold }
+            });
+
+            _commentField = new TextField()
+            {
+                multiline = true,
+                value = _metadata?.comment ?? ""
+            };
+
+            _commentField.style.minHeight = 60;
             _commentField.RegisterValueChangedCallback(OnCommentChanged);
             _editorContainer.Add(_commentField);
 
-            // -- Tags Section --
-            _editorContainer.Add(new Label("Tags:") { style = { marginTop = 10, unityFontStyleAndWeight = FontStyle.Bold } });
-            _tagsContainer = new VisualElement() { name = "tags-list", style = { marginLeft = 5, marginTop = 2 } }; // Indent tag list slightly
+            _editorContainer.Add(new Label("Tags:")
+            {
+                style = {
+                    marginTop = 10,
+                    unityFontStyleAndWeight = FontStyle.Bold
+                }
+            });
+
+            _tagsContainer = new VisualElement()
+            {
+                name = "tags-list",
+                style = { marginLeft = 5, marginTop = 2 }
+            };
+
             _editorContainer.Add(_tagsContainer);
 
-            // -- New Tag Input --
             var tagInputContainer = new VisualElement() { style = { flexDirection = FlexDirection.Row, marginTop = 4, marginLeft = 5 } };
-            _newTagField = new TextField() { style = { flexGrow = 1 } };
-            // Add tag on Enter key press in the new tag field
+            _newTagField = new TextField()
+            {
+                style = {
+                    flexGrow = 1
+                }
+            };
+
             _newTagField.RegisterCallback<KeyDownEvent>(evt =>
             {
                 if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
                 {
                     AddTag();
-                    evt.StopPropagation(); // Prevent other actions on Enter
+                    evt.StopPropagation();
                 }
             });
-            _addTagButton = new Button(AddTag) { text = "+", style = { width = 25 } }; // Make add button slightly wider
+
+            _addTagButton = new Button(AddTag)
+            {
+                text = "+",
+                tooltip = "Add tag",
+                style = { alignSelf = Align.Center }
+            };
+
             tagInputContainer.Add(_newTagField);
             tagInputContainer.Add(_addTagButton);
             _editorContainer.Add(tagInputContainer);
 
-            // -- Save Button (Explicit) --
-            _saveMetadataButton = new Button(SaveChanges) { text = "Save Metadata Changes", style = { marginTop = 15, display = DisplayStyle.None } }; // Initially hidden
+            _saveMetadataButton = new Button(SaveChanges) { text = "Save Metadata Changes", style = { marginTop = 15, display = DisplayStyle.None } };
             _editorContainer.Add(_saveMetadataButton);
 
-            // --- Initial Population ---
-            RefreshTagElements(); // Populate existing tags
-            UpdateInfoBox(); // Update info/warning messages
+            RefreshTagElements();
+            UpdateInfoBox();
 
             return _rootElement;
         }
@@ -176,7 +210,12 @@ namespace MitarashiDango.AvatarCatalog
             tagElement.userData = tag; // Store current tag string
 
             // Label (Clickable for editing)
-            var tagLabel = new Label(tag) { name = "tag-label", style = { flexGrow = 1, marginRight = 5 } };
+            var tagLabel = new Label(tag)
+            {
+                name = "tag-label",
+                style = { flexGrow = 1, paddingBottom = 2, paddingLeft = 5, paddingTop = 2 }
+            };
+
             tagLabel.RegisterCallback<MouseDownEvent>(evt =>
             {
                 if (evt.clickCount == 2 && _currentlyEditingTagField == null)
@@ -196,7 +235,7 @@ namespace MitarashiDango.AvatarCatalog
                 name = "tag-remove-button",
                 text = "x",
                 tooltip = "Remove Tag",
-                style = { width = 18, height = 18, paddingLeft = 0, paddingRight = 0, marginLeft = 4, alignSelf = Align.Center }
+                style = { alignSelf = Align.Center }
             };
 
             // Edit Field (Initially Hidden)
@@ -475,9 +514,7 @@ namespace MitarashiDango.AvatarCatalog
                 string assetPath = AssetDatabase.GetAssetPath(_metadata);
                 if (!string.IsNullOrEmpty(assetPath))
                 {
-                    _infoBox.text = $"Metadata Asset: {assetPath}";
-                    _infoBox.messageType = HelpBoxMessageType.Info;
-                    _infoBox.style.display = DisplayStyle.Flex;
+                    _infoBox.style.display = DisplayStyle.None;
                 }
                 else
                 {
@@ -505,32 +542,31 @@ namespace MitarashiDango.AvatarCatalog
         /// </summary>
         private void SaveChanges()
         {
-            // Commit any active tag edit before saving
             if (_currentlyEditingTagField != null)
             {
                 CommitEditTag(_currentlyEditingTagField.parent, _currentlyEditingTagField);
-                // If commit failed validation, should we abort the save? For now, we continue.
+
                 if (_currentlyEditingTagField != null)
                 {
                     Debug.LogWarning("Save aborted because tag edit validation failed.");
-                    return; // Abort save if tag edit is still active (meaning commit failed)
+                    return;
                 }
             }
 
-            if (_metadata != null) // Ensure metadata exists
+            if (_metadata != null)
             {
                 if (_hasUnsavedChanges)
                 {
                     Debug.Log($"Saving metadata changes for {_globalObjectId}...");
-                    AvatarMetadataUtil.SaveMetadata(_metadata); // Use utility to handle SetDirty and SaveAssets
-                    _hasUnsavedChanges = false; // Reset flag
-                    _saveMetadataButton.style.display = DisplayStyle.None; // Hide save button
+                    AvatarMetadataUtil.SaveMetadata(_metadata);
+                    _hasUnsavedChanges = false;
+                    _saveMetadataButton.style.display = DisplayStyle.None;
                     Debug.Log("Metadata saved successfully.");
                 }
                 else
                 {
                     Debug.Log("No unsaved changes to save.");
-                    _saveMetadataButton.style.display = DisplayStyle.None; // Ensure button is hidden if no changes
+                    _saveMetadataButton.style.display = DisplayStyle.None;
                 }
             }
             else

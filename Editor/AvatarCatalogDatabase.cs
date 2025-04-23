@@ -103,6 +103,8 @@ namespace MitarashiDango.AvatarCatalog
                         var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
                         var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarObject);
                         var avatarGlobalObjectIdString = avatarGlobalObjectId.ToString();
+                        var avatarMetadataComponent = avatarObject.GetComponent<AvatarMetadataComponent>();
+                        var avatarMetadataPath = avatarMetadataComponent != null ? AvatarMetadataUtil.GetMetadataPath(avatarGlobalObjectId) : "";
 
                         if (!prevAvatars.ContainsKey(avatarGlobalObjectIdString))
                         {
@@ -114,7 +116,7 @@ namespace MitarashiDango.AvatarCatalog
                                 avatarGlobalObjectId = avatarGlobalObjectIdString,
                                 avatarObjectName = avatarObject.name,
                                 sceneAsset = scenes[i],
-                                thumbnailImageGuid = StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail).ToString()
+                                thumbnailImageGuid = StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail).ToString(),
                             });
                         }
                         else
@@ -262,12 +264,15 @@ namespace MitarashiDango.AvatarCatalog
                     AssetDatabase.DeleteAsset(thumbnailImagePath);
                 }
 
-                // アバターメタデータの削除
-                var avatarMetadataPath = $"{FolderUtil.AvatarMetadataFolderPath}/{removedAvatar.avatarGlobalObjectId}.asset";
-                var guid = AssetDatabase.AssetPathToGUID(avatarMetadataPath);
-                if (guid != "")
+                if (GlobalObjectId.TryParse(removedAvatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
                 {
-                    AssetDatabase.DeleteAsset(avatarMetadataPath);
+                    // アバターメタデータの削除
+                    var avatarMetadataPath = AvatarMetadataUtil.GetMetadataPath(avatarGlobalObjectId);
+                    var guid = AssetDatabase.GUIDFromAssetPath(avatarMetadataPath);
+                    if (!guid.Empty())
+                    {
+                        AssetDatabase.DeleteAsset(avatarMetadataPath);
+                    }
                 }
             }
         }
