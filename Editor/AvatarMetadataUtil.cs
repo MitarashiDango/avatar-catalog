@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MitarashiDango.AvatarCatalog
 {
-    public class AvatarMetadataUtil : MonoBehaviour
+    public class AvatarMetadataUtil
     {
         public const string AvatarMetadataFolderPath = "Assets/Avatar Catalog User Data/AvatarMetadata";
 
