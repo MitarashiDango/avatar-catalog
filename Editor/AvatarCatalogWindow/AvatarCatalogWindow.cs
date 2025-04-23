@@ -12,18 +12,8 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarCatalogWindow : EditorWindow
     {
-        // TODO 設定で調整可能にする
-        // MEMO 設定の持たせ方は要検討
-        private static readonly float X_OFFSET = 0f;
-        private static readonly float Y_OFFSET = 0f;
-        private static readonly float Z_OFFSET = 0f;
-        private static readonly Color BACKGROUND_COLOR = Color.clear;
-
-        private static readonly int THUMBNAIL_IMAGE_SIZE = 512;
-        private static readonly int MIN_COLUMN_SPACING = 10;
-        private static readonly char[] SEARCH_WORDS_DELIMITER_CHARS = { ' ' };
-
-        private AvatarRenderer _avatarRenderer;
+        private static readonly int MinColumnSpacing = 10;
+        private static readonly char[] SearchWordsDelimiterChars = { ' ' };
 
         private VisualElement _avatarCatalogView;
         private VisualElement _avatarCatalogInitialSetupView;
@@ -41,7 +31,9 @@ namespace MitarashiDango.AvatarCatalog
         private VisualTreeAsset _gridLayoutListRowContainerAsset;
 
         private string _searchText = "";
-        private float _gridItemSize = Preferences.DEFAULT_AVATAR_CATALOG_MAX_ITEM_SIZE;
+        private float _gridItemSize = Preferences.DefaultAvatarCatalogMaxItemSize;
+        private AvatarSearchIndex _avatarSearchIndex = null;
+        private AvatarCatalogDatabase _avatarCatalogDatabase = null;
 
         [MenuItem("Tools/Avatar Catalog/Avatar List")]
         public static void ShowWindow()
@@ -52,30 +44,10 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnEnable()
         {
+            _avatarCatalogDatabase = AvatarCatalogDatabase.LoadOrNewInstance();
+            _avatarSearchIndex = AvatarSearchIndex.LoadOrNewInstance();
+
             ApplyFromPreferences();
-        }
-
-        private void OnDisable()
-        {
-            _avatarRenderer?.Dispose();
-            _avatarRenderer = null;
-        }
-
-        private void InitializeAvatarRenderer()
-        {
-            if (_avatarRenderer != null)
-            {
-                return;
-            }
-
-            _avatarRenderer = new AvatarRenderer();
-        }
-
-        private void CreateFolders()
-        {
-            DirectoryUtil.CreateUserDataFolder();
-            DirectoryUtil.CreateCacheFolder();
-            DirectoryUtil.CreateAvatarThumbnailsCacheFolder();
         }
 
         private void ApplyFromPreferences()
@@ -83,59 +55,9 @@ namespace MitarashiDango.AvatarCatalog
             _gridItemSize = Preferences.Instance.avatarCatalogItemSize;
         }
 
-        private void RefreshAvatars(bool withRefreshThumbnails = false)
+        private GameObject ChangeSelectingObject(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
-            CreateFolders();
-            InitializeAvatarRenderer();
-
-            AvatarCatalogDatabase.Instance.Clear();
-
-            var scenes = GetAllScenes();
-            for (var i = 0; i < scenes.Count; i++)
-            {
-                var scenePath = AssetDatabase.GetAssetPath(scenes[i]);
-                var currentScene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
-
-                var currentSceneRootObjects = currentScene.GetRootGameObjects();
-                var avatarObjects = currentSceneRootObjects.Where(o => o != null && o.GetComponent<VRCAvatarDescriptor>() != null);
-
-                foreach (var avatarObject in avatarObjects)
-                {
-                    var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
-                    var avatar = new AvatarCatalogDatabase.Avatar(scenes[i], avatarObject);
-                    AvatarCatalogDatabase.Instance.AddAvatar(avatar);
-
-                    if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
-                    {
-                        Debug.LogWarning("Failed to parse GlobalObjectId");
-                        continue;
-                    }
-
-                    if (AvatarThumbnailCacheDatabase.Instance.IsExists(avatarGlobalObjectId) && !withRefreshThumbnails)
-                    {
-                        continue;
-                    }
-
-                    var thumbnail = _avatarRenderer.Render(avatarObject, GetCameraSetting(avatarObject), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
-                    thumbnail = AvatarThumbnailCacheDatabase.Instance.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
-                }
-
-                if (currentScene != EditorSceneManager.GetActiveScene())
-                {
-                    EditorSceneManager.CloseScene(currentScene, true);
-                }
-            }
-
-            AvatarCatalogDatabase.Save();
-            AvatarThumbnailCacheDatabase.Save();
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-        }
-
-        private GameObject ChangeSelectingObject(AvatarCatalogDatabase.Avatar avatar)
-        {
-            if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
+            if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
             {
                 Debug.LogWarning("failed to try parse avatar GlobalObjectId");
                 return null;
@@ -271,27 +193,21 @@ namespace MitarashiDango.AvatarCatalog
 
             gridContainer.Clear();
 
-            var avatars = AvatarCatalogDatabase.Instance.avatars;
+            var avatars = _avatarCatalogDatabase.avatars;
             var scrollViewWidth = rootVisualElement.contentRect.width;
             if (avatars.Count == 0 || float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
             {
                 return;
             }
 
-            if (_searchText.Length > 0)
-            {
-                var searchWords = _searchText.ToLower().Split(SEARCH_WORDS_DELIMITER_CHARS);
-                avatars = avatars.Where(avatar => searchWords.All(word => avatar.avatarName.ToLower().IndexOf(word) != -1)).ToList();
-            }
-
-            var totalItems = avatars.Count;
-            if (totalItems == 0)
+            avatars = FilterAvatars(avatars, _searchText);
+            if (avatars.Count == 0)
             {
                 return;
             }
 
-            var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - MIN_COLUMN_SPACING) / (_gridItemSize + MIN_COLUMN_SPACING)));
-            var rows = Mathf.CeilToInt((float)totalItems / maxColumns);
+            var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - MinColumnSpacing) / (_gridItemSize + MinColumnSpacing)));
+            var rows = Mathf.CeilToInt((float)avatars.Count / maxColumns);
 
             var totalRowWidth = maxColumns * _gridItemSize;
             var spaceBetween = (scrollViewWidth - totalRowWidth) / (maxColumns + 1);
@@ -299,17 +215,17 @@ namespace MitarashiDango.AvatarCatalog
             for (var row = 0; row < rows; row++)
             {
                 var startIndex = row * maxColumns;
-                var endIndex = Mathf.Min(startIndex + maxColumns, totalItems);
+                var endIndex = Mathf.Min(startIndex + maxColumns, avatars.Count);
                 var itemCountInRow = endIndex - startIndex;
 
                 var rowContainer = _gridLayoutListRowContainerAsset.CloneTree();
-                rowContainer.style.width = scrollViewWidth - (MIN_COLUMN_SPACING * 2) - spaceBetween;
+                rowContainer.style.width = scrollViewWidth - (MinColumnSpacing * 2) - spaceBetween;
                 rowContainer.style.justifyContent = maxColumns > 1 ? Justify.SpaceBetween : Justify.Center;
 
                 for (var i = startIndex; i < endIndex; i++)
                 {
                     var currentAvatar = avatars[i];
-                    if (!GlobalObjectId.TryParse(currentAvatar.globalObjectId, out var avatarGlobalObjectId))
+                    if (!GlobalObjectId.TryParse(currentAvatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
                     {
                         Debug.LogWarning("failed to try parse avatar GlobalObjectId");
                         continue;
@@ -320,7 +236,7 @@ namespace MitarashiDango.AvatarCatalog
                     gridLayoutItem.style.width = _gridItemSize;
 
                     var avatarThumbnailImage = gridLayoutItem.Q<Image>("avatar-thumbnail-image");
-                    var thumbnailTexture = AvatarThumbnailCacheDatabase.Instance.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
+                    var thumbnailTexture = _avatarCatalogDatabase.TryGetCachedAvatarThumbnailImage(avatarGlobalObjectId);
                     if (thumbnailTexture != null)
                     {
                         avatarThumbnailImage.image = thumbnailTexture;
@@ -332,11 +248,11 @@ namespace MitarashiDango.AvatarCatalog
                     });
 
                     var avatarNameLabel = gridLayoutItem.Q<Label>("avatar-name-label");
-                    avatarNameLabel.text = currentAvatar.avatarName;
+                    avatarNameLabel.text = currentAvatar.avatarObjectName;
 
                     gridLayoutItem.RegisterCallback<ClickEvent>((e) => OnAvatarItemClick(e, currentAvatar));
 
-                    var manipulator = getAvatarCatalogItemContextualMenu(currentAvatar);
+                    var manipulator = GetAvatarCatalogItemContextualMenu(currentAvatar);
                     manipulator.target = gridLayoutItem;
 
                     rowContainer.Add(gridLayoutItem);
@@ -359,7 +275,31 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private ContextualMenuManipulator getAvatarCatalogItemContextualMenu(AvatarCatalogDatabase.Avatar avatar)
+        private List<AvatarCatalogDatabase.AvatarCatalogEntry> FilterAvatars(List<AvatarCatalogDatabase.AvatarCatalogEntry> avatars, string searchText)
+        {
+            var result = avatars;
+
+            if (searchText.Length > 0)
+            {
+                var searchWords = searchText.ToLower().Split(SearchWordsDelimiterChars);
+                if (_avatarSearchIndex == null)
+                {
+                    _avatarSearchIndex = AvatarSearchIndex.LoadOrNewInstance();
+                }
+
+                var avatarGlobalObjectIds = _avatarSearchIndex.GetGlobalObjectIds(searchWords);
+                if (avatarGlobalObjectIds.Count == 0)
+                {
+                    return new List<AvatarCatalogDatabase.AvatarCatalogEntry>();
+                }
+
+                result = result.Where(avatar => avatarGlobalObjectIds.Exists(id => id == avatar.avatarGlobalObjectId)).ToList();
+            }
+
+            return result;
+        }
+
+        private ContextualMenuManipulator GetAvatarCatalogItemContextualMenu(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
             var manipulator = new ContextualMenuManipulator(e =>
             {
@@ -370,7 +310,7 @@ namespace MitarashiDango.AvatarCatalog
 
                 e.menu.AppendAction("Update avatar thumbnail image", action =>
                 {
-                    UpdateAvatarThumbnail(avatar);
+                    _avatarCatalogDatabase.UpdateAvatarThumbnail(avatar);
                     ReloadAvatars();
                 });
 
@@ -383,22 +323,45 @@ namespace MitarashiDango.AvatarCatalog
             return manipulator;
         }
 
-        private List<SceneAsset> GetAllScenes()
+        private void RefreshAvatarCatalogs(bool withRefreshThumbnails = false)
         {
-            return AssetDatabase.FindAssets("t:SceneAsset", new[] { "Assets" })
-                .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
-                .Select(path => AssetDatabase.LoadAssetAtPath<SceneAsset>(path))
-                .Where(asset => asset != null)
-                .ToList();
+            _avatarCatalogDatabase = AvatarCatalogDatabase.LoadOrNewInstance();
+            _avatarCatalogDatabase.RefreshAvatarCatalog(withRefreshThumbnails);
+
+            var asi = AvatarSearchIndex.CreateNewInstance();
+            foreach (var avatar in _avatarCatalogDatabase.avatars)
+            {
+                var words = new List<string>
+                {
+                  avatar.avatarObjectName
+                };
+
+                if (GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
+                {
+                    var avatarMetadata = AvatarMetadataUtil.LoadMetadata(avatarGlobalObjectId);
+                    if (avatarMetadata)
+                    {
+                        words.Add(avatarMetadata.comment);
+                        words.AddRange(avatarMetadata.tags);
+                    }
+                }
+
+                asi.Add(avatar.avatarGlobalObjectId, words);
+            }
+
+            AvatarSearchIndex.Save(asi, true);
+            _avatarSearchIndex = AvatarSearchIndex.LoadOrNewInstance();
         }
 
         private void ReloadAvatarList(bool withRefreshThumbnails = false)
         {
-            RefreshAvatars(withRefreshThumbnails);
+            RefreshAvatarCatalogs(withRefreshThumbnails);
+            _avatarCatalogDatabase = AvatarCatalogDatabase.LoadOrNewInstance();
+
             UpdateGridLayout();
         }
 
-        private void ChangeToActiveAvatar(AvatarCatalogDatabase.Avatar avatar)
+        private void ChangeToActiveAvatar(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
@@ -413,62 +376,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void UpdateAvatarThumbnail(AvatarCatalogDatabase.Avatar avatar)
-        {
-            InitializeAvatarRenderer();
-
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
-            var scene = SceneManager.GetSceneByPath(scenePath);
-            try
-            {
-                if (!scene.isLoaded)
-                {
-                    if (!EditorSceneManager.SaveOpenScenes())
-                    {
-                        Debug.Log("failed to save open scene");
-                        return;
-                    }
-
-                    scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
-                }
-
-                if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
-                {
-                    Debug.LogWarning("Failed to parse GlobalObjectId");
-                    return;
-                }
-
-                var targetAvatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
-                if (targetAvatarObject == null)
-                {
-                    Debug.Log("failed to find avatar object");
-                    return;
-                }
-
-                var avatarDescriptor = targetAvatarObject.GetComponent<VRCAvatarDescriptor>();
-                if (avatarDescriptor == null)
-                {
-                    Debug.Log("failed to find VRCAvatarDescriptor component");
-                    return;
-                }
-
-                var thumbnail = _avatarRenderer.Render(targetAvatarObject, GetCameraSetting(targetAvatarObject), THUMBNAIL_IMAGE_SIZE, THUMBNAIL_IMAGE_SIZE, null, null, false);
-                AvatarThumbnailCacheDatabase.Instance.StoreAvatarThumbnailImage(avatarGlobalObjectId, thumbnail);
-                AvatarThumbnailCacheDatabase.Save();
-            }
-            finally
-            {
-                if (scene != EditorSceneManager.GetActiveScene())
-                {
-                    EditorSceneManager.CloseScene(scene, true);
-                }
-            }
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-        }
-
-        private void AddAvatarCatalogThumbnailSettingsComponent(AvatarCatalogDatabase.Avatar avatar)
+        private void AddAvatarCatalogThumbnailSettingsComponent(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
             var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
             var scene = SceneManager.GetSceneByPath(scenePath);
@@ -485,7 +393,7 @@ namespace MitarashiDango.AvatarCatalog
                     scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
                 }
 
-                if (!GlobalObjectId.TryParse(avatar.globalObjectId, out var avatarGlobalObjectId))
+                if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
                 {
                     Debug.LogWarning("Failed to parse GlobalObjectId");
                     return;
@@ -518,24 +426,10 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private AvatarRenderer.CameraSetting GetCameraSetting(GameObject avatarObject)
-        {
-            var avatarCatalogThumbnailSettings = avatarObject.GetComponent<AvatarCatalogThumbnailSettings>();
-
-            var cameraSetting = new AvatarRenderer.CameraSetting();
-            cameraSetting.BackgroundColor = BACKGROUND_COLOR;
-            cameraSetting.PositionOffset = avatarCatalogThumbnailSettings != null && avatarCatalogThumbnailSettings.cameraPositionOffset != null ? avatarCatalogThumbnailSettings.cameraPositionOffset : new Vector3(X_OFFSET, Y_OFFSET, Z_OFFSET);
-            cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
-            cameraSetting.Scale = new Vector3(1, 1, 1);
-
-            return cameraSetting;
-        }
-
         public void ReloadAvatars()
         {
             Preferences.LoadOrNewInstance();
-            AvatarCatalogDatabase.LoadOrNewInstance();
-            AvatarThumbnailCacheDatabase.LoadOrNewInstance();
+            _avatarCatalogDatabase = AvatarCatalogDatabase.LoadOrNewInstance();
 
             UpdateGridLayout();
 
@@ -556,7 +450,7 @@ namespace MitarashiDango.AvatarCatalog
             UpdateGridLayout();
         }
 
-        private void OnAvatarItemClick(ClickEvent e, AvatarCatalogDatabase.Avatar avatar)
+        private void OnAvatarItemClick(ClickEvent e, AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
             if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
             {
@@ -566,7 +460,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnRunInitialSetupButtonClick()
         {
-            RefreshAvatars();
+            RefreshAvatarCatalogs();
             UpdateGridLayout();
 
             // とりあえず AvatarCatalogDatabase の実体ファイルの有無で判定する

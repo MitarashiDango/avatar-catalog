@@ -5,48 +5,54 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarMetadataUtil : MonoBehaviour
     {
-        public const string MetadataBaseFolder = "Assets/Avatar Catalog User Data/AvatarMetadata";
+        public const string AvatarMetadataFolderPath = "Assets/Avatar Catalog User Data/AvatarMetadata";
 
         /// <summary>
-        /// GlobalObjectIdからメタデータの期待されるアセットパスを取得します。
+        /// GlobalObjectIdからアセットパスを取得します
         /// </summary>
-        /// <param name="id">対象のGlobalObjectId</param>
-        /// <returns>アセットパス。無効なGoidの場合はnull。</returns>
+        /// <param name="id">対象の GlobalObjectId</param>
+        /// <returns>アバターメタデータのファイルパスを返却する。無効な GlobalObjectId の場合は null を返却する。</returns>
         public static string GetMetadataPath(GlobalObjectId id)
         {
-            if (id.Equals(default(GlobalObjectId)) && id.identifierType == 0)
+            if (id.Equals(default) && id.identifierType == 0)
             {
                 Debug.LogWarning("Attempted to get metadata path for an invalid GlobalObjectId.");
                 return null;
             }
 
-            var safeFileName = id.ToString().Replace(":", "_").Replace("/", "_");
-            return $"{MetadataBaseFolder}/{safeFileName}.asset";
+            return $"{AvatarMetadataFolderPath}/{id.assetGUID}_{id.targetObjectId}_{id.targetPrefabId}.asset";
         }
 
         /// <summary>
-        /// 指定されたGlobalObjectIdに対応するAvatarMetadataをロードします。
+        /// 指定された GlobalObjectId に対応するアバターメタデータをロードします
         /// </summary>
         /// <param name="id">対象のGlobalObjectId</param>
-        /// <returns>ロードされたAvatarMetadata。存在しない場合はnull。</returns>
+        /// <returns>ロードされたアバターメタデータを返却する。GlobalObjectId が無効な場合は null を返却する。</returns>
         public static AvatarMetadata LoadMetadata(GlobalObjectId id)
         {
             var path = GetMetadataPath(id);
-            if (string.IsNullOrEmpty(path)) return null;
+            if (string.IsNullOrEmpty(path))
+            {
+                return null;
+            }
+
             return AssetDatabase.LoadAssetAtPath<AvatarMetadata>(path);
         }
 
         /// <summary>
-        /// 指定されたGlobalObjectIdに対応するAvatarMetadataをロードまたは新規作成します。
+        /// 指定された GlobalObjectId に対応するアバターメタデータをロードまたは新規作成します
         /// </summary>
         /// <param name="id">対象のGlobalObjectId</param>
         /// <param name="createdNew">新規作成された場合にtrue</param>
-        /// <returns>ロードまたは作成されたAvatarMetadata。Goidが無効な場合はnull。</returns>
+        /// <returns>ロードまたは作成されたアバターメタデータを返却する。GlobalObjectId が無効な場合は null を返却する。</returns>
         public static AvatarMetadata LoadOrCreateMetadata(GlobalObjectId id, out bool createdNew)
         {
             createdNew = false;
             var path = GetMetadataPath(id);
-            if (string.IsNullOrEmpty(path)) return null;
+            if (string.IsNullOrEmpty(path))
+            {
+                return null;
+            }
 
             AvatarMetadata data = AssetDatabase.LoadAssetAtPath<AvatarMetadata>(path);
             if (data == null)
@@ -54,7 +60,7 @@ namespace MitarashiDango.AvatarCatalog
                 data = ScriptableObject.CreateInstance<AvatarMetadata>();
                 data.avatarGlobalObjectId = id.ToString();
 
-                DirectoryUtil.CreateAvatarMetadataFolder();
+                FolderUtil.CreateAvatarMetadataFolder();
 
                 try
                 {
@@ -81,9 +87,9 @@ namespace MitarashiDango.AvatarCatalog
         }
 
         /// <summary>
-        /// AvatarMetadataアセットへの変更を保存します。
+        /// アバターメタデータへの変更を保存します
         /// </summary>
-        /// <param name="metadata">保存するAvatarMetadataインスタンス</param>
+        /// <param name="metadata">保存するアバターメタデータ</param>
         public static void SaveMetadata(AvatarMetadata metadata)
         {
             if (metadata != null)

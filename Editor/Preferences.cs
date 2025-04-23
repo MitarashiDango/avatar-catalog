@@ -9,14 +9,14 @@ namespace MitarashiDango.AvatarCatalog
     {
         private static Preferences _instance;
 
-        public static readonly float AVATAR_CATALOG_MIN_ITEM_SIZE = 128;
-        public static readonly float AVATAR_CATALOG_MAX_ITEM_SIZE = 256;
-        public static readonly float DEFAULT_AVATAR_CATALOG_MAX_ITEM_SIZE = 160;
+        public static readonly float AvatarCatalogMinItemSize = 128;
+        public static readonly float AvatarCatalogMaxItemSize = 256;
+        public static readonly float DefaultAvatarCatalogMaxItemSize = 160;
 
         public static string ASSET_FILE_PATH = "Assets/Avatar Catalog User Data/Preferences.asset";
 
         [SerializeField]
-        private float _avatarCatalogItemSize = DEFAULT_AVATAR_CATALOG_MAX_ITEM_SIZE;
+        private float _avatarCatalogItemSize = DefaultAvatarCatalogMaxItemSize;
 
         protected Preferences() : base()
         {
@@ -40,15 +40,15 @@ namespace MitarashiDango.AvatarCatalog
             get => _avatarCatalogItemSize;
             set
             {
-                if (value < AVATAR_CATALOG_MIN_ITEM_SIZE)
+                if (value < AvatarCatalogMinItemSize)
                 {
-                    _avatarCatalogItemSize = AVATAR_CATALOG_MIN_ITEM_SIZE;
+                    _avatarCatalogItemSize = AvatarCatalogMinItemSize;
                     return;
                 }
 
-                if (value > AVATAR_CATALOG_MAX_ITEM_SIZE)
+                if (value > AvatarCatalogMaxItemSize)
                 {
-                    _avatarCatalogItemSize = AVATAR_CATALOG_MAX_ITEM_SIZE;
+                    _avatarCatalogItemSize = AvatarCatalogMaxItemSize;
                     return;
                 }
 
