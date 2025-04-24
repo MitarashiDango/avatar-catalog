@@ -1,0 +1,32 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarMetadataEditorWindow/AvatarMetadataEditorWindow.uss?fileID=7433441132597879392&amp;guid=6a9efef6fde80f24d8c4686cf92e012a&amp;type=3#AvatarMetadataEditorWindow" />
+    <ui:VisualElement class="header">
+        <ui:Label text="アバターメタデータ編集" class="title" />
+        <ui:VisualElement class="field-group">
+            <ui:Label text="対象アバター" class="field-title" />
+            <ui:VisualElement class="avatar-object-field-container">
+                <uie:ObjectField name="avatarObjectField" allow-scene-objects="true" class="avatar-object-field" />
+                <ui:VisualElement class="buttons">
+                    <ui:Button name="createMetadataButton" text="メタデータ作成" />
+                    <ui:Button name="deleteMetadataButton" text="メタデータ削除" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:HelpBox name="statusHelpBox" />
+    <ui:ScrollView class="editor-content">
+        <ui:VisualElement name="metadataEditorArea" class="section">
+            <ui:VisualElement class="field-group">
+                <ui:Label text="コメント" class="field-title" />
+                <ui:TextField name="commentField" multiline="true" class="comment-field" />
+            </ui:VisualElement>
+            <ui:VisualElement class="field-group">
+                <ui:Label text="タグ情報" class="field-title" />
+                <ui:ScrollView class="tags-scroll-view">
+                    <ui:VisualElement name="tagsContainer" />
+                </ui:ScrollView>
+                <ui:Button name="addTagButton" text="タグを追加" class="add-tag-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:ScrollView>
+</ui:UXML>
