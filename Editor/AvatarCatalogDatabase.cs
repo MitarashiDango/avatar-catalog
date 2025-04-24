@@ -103,8 +103,6 @@ namespace MitarashiDango.AvatarCatalog
                         var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
                         var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarObject);
                         var avatarGlobalObjectIdString = avatarGlobalObjectId.ToString();
-                        var avatarMetadataComponent = avatarObject.GetComponent<AvatarMetadataComponent>();
-                        var avatarMetadataPath = avatarMetadataComponent != null ? AvatarMetadataUtil.GetMetadataPath(avatarGlobalObjectId) : "";
 
                         if (!prevAvatars.ContainsKey(avatarGlobalObjectIdString))
                         {

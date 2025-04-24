@@ -32,6 +32,12 @@ namespace MitarashiDango.AvatarCatalog
             ShowWindow(null);
         }
 
+        [MenuItem("GameObject/Avatar Catalog/Metadata Editor", false, 0)]
+        internal static void ShowWindowForObjectContextMenu()
+        {
+            ShowWindow(Selection.activeGameObject != null ? Selection.activeGameObject : null);
+        }
+
         public static void ShowWindow(GameObject targetAvatar)
         {
             AvatarMetadataEditorWindow window = GetWindow<AvatarMetadataEditorWindow>("Avatar Metadata Editor");
