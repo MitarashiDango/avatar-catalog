@@ -26,13 +26,13 @@ namespace MitarashiDango.AvatarCatalog
         private GameObject _currentTargetAvatar;
         private AvatarMetadata _currentMetadata;
 
-        [MenuItem("Tools/Avatar Catalog/Metadata Editor")]
+        [MenuItem("Tools/Avatar Catalog/Avatar Metadata Editor")]
         public static void ShowWindow()
         {
             ShowWindow(null);
         }
 
-        [MenuItem("GameObject/Avatar Catalog/Metadata Editor", false, 0)]
+        [MenuItem("GameObject/Avatar Catalog/Avatar Metadata Editor", false, 0)]
         internal static void ShowWindowForObjectContextMenu()
         {
             ShowWindow(Selection.activeGameObject != null ? Selection.activeGameObject : null);
@@ -48,8 +48,12 @@ namespace MitarashiDango.AvatarCatalog
         {
             LoadUxmlAndUss();
 
-            var fontAsset = FontCache.GetOrCreateFontAsset("Yu Gothic UI");
-            FontCache.ApplyFont(rootVisualElement, fontAsset);
+            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
+            if (preferredFontFamilyName != "")
+            {
+                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
+                FontCache.ApplyFont(rootVisualElement, fontAsset);
+            }
 
             // UI要素を取得
             _avatarObjectField = rootVisualElement.Q<ObjectField>("avatarObjectField");
@@ -71,6 +75,28 @@ namespace MitarashiDango.AvatarCatalog
 
             // 初期状態を設定
             HideHelpBox();
+            UpdateUIState();
+
+            EditorApplication.update -= OnEditorUpdate;
+            EditorApplication.update += OnEditorUpdate;
+        }
+
+        private void OnEditorUpdate()
+        {
+            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
+            if (preferredFontFamilyName != "")
+            {
+                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
+                FontCache.ApplyFont(rootVisualElement, fontAsset);
+            }
+
+            var avatarObject = _avatarObjectField.value as GameObject;
+            if (avatarObject == null)
+            {
+                _currentMetadata = null;
+                _currentTargetAvatar = null;
+            }
+
             UpdateUIState();
         }
 

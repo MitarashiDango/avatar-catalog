@@ -59,7 +59,14 @@ namespace MitarashiDango.AvatarCatalog
         {
             if (_cachedFonts.TryGetValue(familyName, out var cachedFont))
             {
-                return cachedFont;
+                if (cachedFont != null)
+                {
+                    return cachedFont;
+                }
+                else
+                {
+                    _cachedFonts.Remove(familyName);
+                }
             }
 
             var osFontNames = Font.GetOSInstalledFontNames();
