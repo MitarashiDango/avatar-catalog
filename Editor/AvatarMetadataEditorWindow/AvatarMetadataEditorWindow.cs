@@ -178,7 +178,7 @@ namespace MitarashiDango.AvatarCatalog
                 // VRC Avatar Descriptor があるか再度確認
                 if (_currentTargetAvatar.GetComponent<VRCAvatarDescriptor>() == null)
                 {
-                    ShowHelpBoxMessage("'{_currentTargetAvatar.name}' には VRCAvatarDescriptor がありません。", HelpBoxMessageType.Error);
+                    ShowHelpBoxMessage("'{_currentTargetAvatar.name}' には VRC Avatar Descriptor がありません。", HelpBoxMessageType.Error);
                     UpdateUIState();
                     return;
                 }
@@ -302,11 +302,11 @@ namespace MitarashiDango.AvatarCatalog
 
             if (avatarSelected && !hasDescriptor)
             {
-                ShowHelpBoxMessage($"'{_currentTargetAvatar.name}' には VRCAvatarDescriptor がありません。アバターを選択し直してください。", HelpBoxMessageType.Error);
+                ShowHelpBoxMessage($"'{_currentTargetAvatar.name}' には VRC Avatar Descriptor がありません。アバターを選択し直してください。", HelpBoxMessageType.Error);
             }
             else if (!avatarSelected)
             {
-                ShowHelpBoxMessage("対象となるアバターの GameObject を上のフィールドに設定してください。", HelpBoxMessageType.Info);
+                ShowHelpBoxMessage("メタデータ編集対象となるアバターの GameObject を上のフィールドに設定してください。", HelpBoxMessageType.Info);
             }
             else if (avatarSelected && hasDescriptor && !metadataExists)
             {

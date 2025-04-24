@@ -21,6 +21,8 @@
 .header .title {
     font-size: 14px;
     -unity-font-style: bold;
+    margin-top: 5px;
+    margin-left: 5px;
     margin-bottom: 5px;
 }
 
