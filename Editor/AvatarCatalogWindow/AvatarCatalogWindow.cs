@@ -318,9 +318,54 @@ namespace MitarashiDango.AvatarCatalog
                 {
                     AddAvatarCatalogThumbnailSettingsComponent(avatar);
                 });
+
+                e.menu.AppendAction("Edit Avatar Metadata", action =>
+                {
+                    ShowAvatarMetadataEditor(avatar);
+                });
             });
 
             return manipulator;
+        }
+
+        private void ShowAvatarMetadataEditor(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        {
+            var currentScenePath = SceneManager.GetActiveScene().path;
+            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scene = SceneManager.GetSceneByPath(scenePath);
+            if (!scene.isLoaded)
+            {
+                if (!EditorUtility.DisplayDialog("シーン切り替え確認", $"アバター '{avatar.avatarObjectName}' のメタデータを編集するため、シーンを切り替えます。\nよろしいですか？", "はい", "いいえ"))
+                {
+                    return;
+                }
+
+                if (!EditorSceneManager.SaveOpenScenes())
+                {
+                    Debug.Log("failed to save open scene");
+                    return;
+                }
+
+                EditorSceneManager.OpenScene(scenePath);
+            }
+
+            if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
+            {
+                EditorSceneManager.OpenScene(currentScenePath);
+                Debug.LogWarning("Failed to parse GlobalObjectId");
+                return;
+            }
+
+            var avatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
+            if (avatarObject == null)
+            {
+                EditorSceneManager.OpenScene(currentScenePath);
+                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' が見つかりませんでした。", "OK");
+                Debug.Log("failed to find avatar object");
+                return;
+            }
+
+            AvatarMetadataEditorWindow.ShowWindow(avatarObject);
         }
 
         private void RefreshAvatarCatalogs(bool withRefreshThumbnails = false)
