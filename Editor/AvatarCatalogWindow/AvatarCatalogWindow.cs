@@ -417,6 +417,7 @@ namespace MitarashiDango.AvatarCatalog
             var avatarObject = ChangeSelectingObject(avatar);
             if (avatarObject != null)
             {
+                EditorGUIUtility.PingObject(avatarObject);
                 Debug.Log("Selected: " + avatarObject.name);
             }
         }
