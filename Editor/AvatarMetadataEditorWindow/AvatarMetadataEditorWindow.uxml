@@ -1,0 +1,32 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" xsi:noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarMetadataEditorWindow/AvatarMetadataEditorWindow.uss?fileID=7433441132597879392&amp;guid=6a9efef6fde80f24d8c4686cf92e012a&amp;type=3#AvatarMetadataEditorWindow" />
+    <engine:VisualElement class="header">
+        <engine:Label text="アバターメタデータ編集" class="title" />
+        <engine:VisualElement class="field-group">
+            <engine:Label text="対象アバター" class="field-title" />
+            <engine:VisualElement class="avatar-object-field-container">
+                <editor:ObjectField name="avatarObjectField" allow-scene-objects="true" class="avatar-object-field" />
+                <engine:VisualElement class="buttons">
+                    <engine:Button name="createMetadataButton" text="メタデータ作成" />
+                    <engine:Button name="deleteMetadataButton" text="メタデータ削除" />
+                </engine:VisualElement>
+            </engine:VisualElement>
+        </engine:VisualElement>
+    </engine:VisualElement>
+    <engine:HelpBox name="statusHelpBox" />
+    <engine:ScrollView class="editor-content">
+        <engine:VisualElement name="metadataEditorArea" class="section">
+            <engine:VisualElement class="field-group">
+                <engine:Label text="コメント" class="field-title" />
+                <engine:TextField name="commentField" multiline="true" class="comment-field" />
+            </engine:VisualElement>
+            <engine:VisualElement class="field-group">
+                <engine:Label text="タグ情報" class="field-title" />
+                <engine:ScrollView class="tags-scroll-view">
+                    <engine:VisualElement name="tagsContainer" />
+                </engine:ScrollView>
+                <engine:Button name="addTagButton" text="タグを追加" class="add-tag-button" />
+            </engine:VisualElement>
+        </engine:VisualElement>
+    </engine:ScrollView>
+</engine:UXML>

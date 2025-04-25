@@ -1,0 +1,100 @@
+:root {
+    flex-grow: 1;
+}
+
+.unity-editor-window__content > VisualElement {
+    padding: 5px;
+}
+
+.section {
+    margin-bottom: 10px;
+    flex-grow: 1;
+    flex-shrink: 0;
+}
+
+.header {
+    margin-bottom: 5px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.header .title {
+    font-size: 14px;
+    -unity-font-style: bold;
+    margin-top: 5px;
+    margin-left: 5px;
+    margin-bottom: 5px;
+}
+
+.avatar-object-field-container {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.avatar-object-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.avatar-object-field-container .buttons {
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.field-group {
+    margin-bottom: 8px;
+}
+
+.field-title {
+    margin-bottom: 5px;
+    margin-left: 2px;
+}
+
+.comment-field {
+    min-height: 60px;
+    max-height: 150px;
+}
+
+.editor-container {
+    min-height: 0px;
+}
+
+.tags-scroll-view {
+    min-height: 0px;
+    max-height: 200px;
+    border-width: 1px;
+    border-color: rgb(60, 60, 60);
+    margin-bottom: 5px;
+    flex-shrink: 0;
+}
+
+.tag-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 2px;
+    padding: 0 2px;
+    flex-shrink: 0;
+}
+
+.tag-field {
+    flex-grow: 1;
+    flex-shrink: 0;
+    margin-right: 26px;
+}
+
+.tag-field .unity-base-text-field__input {
+    height: 18px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+}
+
+.tag-delete-button {
+    min-width: 20px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: auto;
+}
+
+:disabled {
+    opacity: 0.5;
+}
