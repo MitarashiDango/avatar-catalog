@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using VRC.SDK3.Avatars.Components;
+using UnityEngine.SceneManagement;
+using UnityEditor.SceneManagement;
 
 namespace MitarashiDango.AvatarCatalog
 {
@@ -77,11 +79,11 @@ namespace MitarashiDango.AvatarCatalog
             HideHelpBox();
             UpdateUIState();
 
-            EditorApplication.update -= OnEditorUpdate;
-            EditorApplication.update += OnEditorUpdate;
+            EditorSceneManager.sceneOpened -= OnSceneOpened;
+            EditorSceneManager.sceneOpened += OnSceneOpened;
         }
 
-        private void OnEditorUpdate()
+        private void OnSceneOpened(Scene scene, OpenSceneMode mode)
         {
             var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
             if (preferredFontFamilyName != "")
@@ -342,6 +344,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnDestroy()
         {
+            EditorSceneManager.sceneOpened -= OnSceneOpened;
             if (_currentMetadata != null && EditorUtility.IsDirty(_currentMetadata))
             {
                 Debug.Log("Saving metadata on window close...");
