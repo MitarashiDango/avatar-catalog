@@ -50,6 +50,11 @@ namespace MitarashiDango.AvatarCatalog
             ApplyFromPreferences();
         }
 
+        private void OnDestroy()
+        {
+            EditorSceneManager.sceneOpened -= OnSceneOpened;
+        }
+
         private void ApplyFromPreferences()
         {
             _gridItemSize = Preferences.Instance.avatarCatalogItemSize;
@@ -114,6 +119,13 @@ namespace MitarashiDango.AvatarCatalog
             var root = rootVisualElement;
             root.Clear();
 
+            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
+            if (preferredFontFamilyName != "")
+            {
+                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
+                FontCache.ApplyFont(rootVisualElement, fontAsset);
+            }
+
             _avatarCatalogView = _avatarCatalogViewAsset.CloneTree();
             root.Add(_avatarCatalogView);
 
@@ -131,6 +143,19 @@ namespace MitarashiDango.AvatarCatalog
             else
             {
                 ShowAvatarCatalogInitialSetupView();
+            }
+
+            EditorSceneManager.sceneOpened -= OnSceneOpened;
+            EditorSceneManager.sceneOpened += OnSceneOpened;
+        }
+
+        private void OnSceneOpened(Scene scene, OpenSceneMode mode)
+        {
+            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
+            if (preferredFontFamilyName != "")
+            {
+                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
+                FontCache.ApplyFont(rootVisualElement, fontAsset);
             }
         }
 
