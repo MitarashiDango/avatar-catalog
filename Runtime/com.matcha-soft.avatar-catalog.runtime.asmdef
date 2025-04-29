@@ -1,6 +1,6 @@
 {
-    "name": "AvatarCatalog_Runtime",
-    "rootNamespace": "MitarashiDango.AvatarCatalog",
+    "name": "com.matcha-soft.avatar-catalog.runtime",
+    "rootNamespace": "MitarashiDango.AvatarCatalog.Runtime",
     "references": [
         "GUID:3456780c4fb2d324ab9c633d6f1b0ddb"
     ],

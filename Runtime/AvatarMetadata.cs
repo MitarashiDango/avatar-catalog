@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace MitarashiDango.AvatarCatalog
+namespace MitarashiDango.AvatarCatalog.Runtime
 {
     [CreateAssetMenu(menuName = "Avatar Catalog/Avatar Metadata")]
     public class AvatarMetadata : ScriptableObject

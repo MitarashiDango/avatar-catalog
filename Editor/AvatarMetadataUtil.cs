@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using MitarashiDango.AvatarCatalog.Runtime;
 using UnityEditor;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
