@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MitarashiDango.AvatarCatalog.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;

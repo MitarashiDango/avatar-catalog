@@ -1,3 +1,4 @@
+using MitarashiDango.AvatarCatalog.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEditor.UIElements;

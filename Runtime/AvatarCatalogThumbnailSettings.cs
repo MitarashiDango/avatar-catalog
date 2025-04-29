@@ -1,7 +1,7 @@
 using UnityEngine;
 using VRC.SDKBase;
 
-namespace MitarashiDango.AvatarCatalog
+namespace MitarashiDango.AvatarCatalog.Runtime
 {
     [DisallowMultipleComponent]
     [AddComponentMenu("Avatar Catalog/Avatar Thumbnail Settings")]

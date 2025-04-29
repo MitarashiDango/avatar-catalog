@@ -1,3 +1,4 @@
+using MitarashiDango.AvatarCatalog.Runtime;
 using UnityEngine;
 using VRC.SDKBase.Editor.BuildPipeline;
 

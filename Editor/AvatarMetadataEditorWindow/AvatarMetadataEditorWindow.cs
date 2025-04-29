@@ -5,6 +5,7 @@ using UnityEditor.UIElements;
 using VRC.SDK3.Avatars.Components;
 using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
+using MitarashiDango.AvatarCatalog.Runtime;
 
 namespace MitarashiDango.AvatarCatalog
 {
