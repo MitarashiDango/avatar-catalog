@@ -7,10 +7,10 @@ namespace MitarashiDango.AvatarCatalog.Runtime
     [AddComponentMenu("Avatar Catalog/Avatar Thumbnail Settings")]
     public class AvatarCatalogThumbnailSettings : MonoBehaviour, IEditorOnly
     {
-        [SerializeField, HideInInspector]
+        [SerializeField]
         public Vector3 cameraPositionOffset = new Vector3(0, 0, 0);
 
-        [SerializeField, HideInInspector]
+        [SerializeField]
         public Quaternion cameraRotation = Quaternion.Euler(0, 180, 0);
     }
 }
