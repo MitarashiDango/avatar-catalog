@@ -316,7 +316,7 @@ namespace MitarashiDango.AvatarCatalog
             var cameraSetting = new AvatarRenderer.CameraSetting();
             cameraSetting.BackgroundColor = BackgroundColor;
             cameraSetting.PositionOffset = avatarCatalogThumbnailSettings != null && avatarCatalogThumbnailSettings.cameraPositionOffset != null ? avatarCatalogThumbnailSettings.cameraPositionOffset : new Vector3(XOffset, YOffset, ZOffset);
-            cameraSetting.Rotation = Quaternion.Euler(0, 180, 0);
+            cameraSetting.Rotation = avatarCatalogThumbnailSettings != null && avatarCatalogThumbnailSettings.cameraRotation != null ? avatarCatalogThumbnailSettings.cameraRotation : Quaternion.Euler(0, 180, 0);
             cameraSetting.Scale = new Vector3(1, 1, 1);
 
             return cameraSetting;
