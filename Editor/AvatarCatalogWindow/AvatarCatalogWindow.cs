@@ -478,13 +478,13 @@ namespace MitarashiDango.AvatarCatalog
                     return;
                 }
 
-                var component = avatarObject.GetComponent<AvatarCatalogThumbnailSettings>();
+                var component = avatarObject.GetComponent<AvatarThumbnailSettings>();
                 if (component != null)
                 {
                     return;
                 }
 
-                avatarObject.AddComponent<AvatarCatalogThumbnailSettings>();
+                avatarObject.AddComponent<AvatarThumbnailSettings>();
                 EditorUtility.SetDirty(avatarObject);
 
                 EditorSceneManager.SaveScene(scene);
