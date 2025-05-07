@@ -10,7 +10,7 @@ namespace MitarashiDango.AvatarCatalog
 
         public bool OnPreprocessAvatar(GameObject avatarGameObject)
         {
-            foreach (var component in avatarGameObject.GetComponentsInChildren<AvatarCatalogThumbnailSettings>(true))
+            foreach (var component in avatarGameObject.GetComponentsInChildren<AvatarThumbnailSettings>(true))
             {
                 DestroyImmediate(component);
             }

@@ -5,7 +5,7 @@ namespace MitarashiDango.AvatarCatalog.Runtime
 {
     [DisallowMultipleComponent]
     [AddComponentMenu("Avatar Catalog/Avatar Thumbnail Settings")]
-    public class AvatarCatalogThumbnailSettings : MonoBehaviour, IEditorOnly
+    public class AvatarThumbnailSettings : MonoBehaviour, IEditorOnly
     {
         [SerializeField]
         public Vector3 cameraPositionOffset = new Vector3(0, 0, 0);

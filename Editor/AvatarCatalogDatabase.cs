@@ -311,7 +311,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private static AvatarRenderer.CameraSetting GetCameraSetting(GameObject avatarObject)
         {
-            var avatarCatalogThumbnailSettings = avatarObject.GetComponent<AvatarCatalogThumbnailSettings>();
+            var avatarCatalogThumbnailSettings = avatarObject.GetComponent<AvatarThumbnailSettings>();
 
             var cameraSetting = new AvatarRenderer.CameraSetting();
             cameraSetting.BackgroundColor = BackgroundColor;

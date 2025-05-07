@@ -8,8 +8,8 @@ using UnityEngine.UIElements;
 
 namespace MitarashiDango.AvatarCatalog
 {
-    [CustomEditor(typeof(AvatarCatalogThumbnailSettings))]
-    public class AvatarCatalogThumbnailSettingsEditor : Editor
+    [CustomEditor(typeof(AvatarThumbnailSettings))]
+    public class AvatarThumbnailSettingsEditor : Editor
     {
         private SerializedProperty _cameraPositionOffset;
         private SerializedProperty _cameraRotation;
