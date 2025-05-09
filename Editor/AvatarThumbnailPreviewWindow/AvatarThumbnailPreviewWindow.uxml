@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarThumbnailPreviewWindow/AvatarThumbnailPreviewWindow.uss?fileID=7433441132597879392&amp;guid=d1b02989b5a645548ad983429590b91a&amp;type=3#AvatarThumbnailPreviewWindow" />
+    <ui:VisualElement name="header">
+        <uie:ObjectField name="preview-target-avatar-object" type="VRC.SDK3.Avatars.Components.VRCAvatarDescriptor, VRCSDK3A" />
+        <ui:Button name="refresh-button" parse-escape-sequences="true" display-tooltip-when-elided="true">
+            <ui:Image name="refresh-button-icon-image" />
+        </ui:Button>
+    </ui:VisualElement>
+    <ui:VisualElement name="thumbnail-container">
+        <ui:Image name="avatar-thumbnail-image" />
+    </ui:VisualElement>
+</ui:UXML>

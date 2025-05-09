@@ -70,6 +70,14 @@ namespace MitarashiDango.AvatarCatalog
 
             root.Add(cameraRotationField);
 
+            var showThumbnailPreviewWindowButton = new Button
+            {
+                text = "サムネイル画像をプレビュー",
+            };
+            showThumbnailPreviewWindowButton.RegisterCallback<ClickEvent>(OnShowThumbnailPreviewWindowButtonClick);
+
+            root.Add(showThumbnailPreviewWindowButton);
+
             EditorSceneManager.sceneOpened -= OnSceneOpened;
             EditorSceneManager.sceneOpened += OnSceneOpened;
 
@@ -79,6 +87,14 @@ namespace MitarashiDango.AvatarCatalog
         private void OnSceneOpened(Scene scene, OpenSceneMode mode)
         {
             Repaint();
+        }
+
+        private void OnShowThumbnailPreviewWindowButtonClick(ClickEvent ev)
+        {
+            if (target is AvatarThumbnailSettings avatarThumbnailSettings)
+            {
+                AvatarThumbnailPreviewWindow.ShowWindow(avatarThumbnailSettings.gameObject);
+            }
         }
     }
 }
