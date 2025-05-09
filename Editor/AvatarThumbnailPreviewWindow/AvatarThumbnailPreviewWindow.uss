@@ -1,0 +1,39 @@
+#header {
+    flex-direction: row;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+#preview-target-avatar-object {
+    height: 24;
+    flex-grow: 1;
+    flex-shrink: 1;
+    font-size: 16;
+}
+
+#refresh-button {
+    height: 24;
+    flex-grow: 0;
+    flex-shrink: 0;
+    padding-bottom: 3;
+    padding-left: 3;
+    padding-right: 3;
+    padding-top: 3;
+}
+
+#refresh-button-icon-image {
+    align-content: center;
+    align-items: center;
+}
+
+#thumbnail-container {
+    align-content: center;
+    align-items: center;
+    flex-grow: 0;
+    flex-shrink: 1;
+}
+
+#avatar-thumbnail-image {
+    flex-grow: 0;
+    flex-shrink: 1;
+}

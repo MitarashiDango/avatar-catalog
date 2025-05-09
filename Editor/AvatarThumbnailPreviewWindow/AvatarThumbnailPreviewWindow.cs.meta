@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 690b23f32e966bb4588c0a49c1844e66
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - m_ViewDataDictionary: {instanceID: 0}
+  - _previewAvatarThumbnailAsset: {fileID: 9197481963319205126, guid: 1171fa6381d630845a36a5e82ec47f61,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

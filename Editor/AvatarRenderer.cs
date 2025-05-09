@@ -12,7 +12,7 @@ namespace MitarashiDango.AvatarCatalog
 
         public AvatarRenderer()
         {
-            InitializePreviewRenderUtility();
+            _previewRenderUtility = new PreviewRenderUtility();
         }
 
         ~AvatarRenderer()
@@ -173,6 +173,11 @@ namespace MitarashiDango.AvatarCatalog
 
         private Vector3 GetCameraPosition(GameObject avatarRootObject, Vector3 positionOffset)
         {
+            if (avatarRootObject == null)
+            {
+                return new Vector3(positionOffset.x, positionOffset.y, positionOffset.z);
+            }
+
             var bounds = GetObjectBounds(avatarRootObject);
             var position = bounds.center;
             var maxBoundsSize = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
@@ -180,16 +185,6 @@ namespace MitarashiDango.AvatarCatalog
             position -= _previewRenderUtility.camera.transform.forward * cameraDistance;
             position += positionOffset;
             return position;
-        }
-
-        public void InitializePreviewRenderUtility()
-        {
-            if (_previewRenderUtility != null)
-            {
-                _previewRenderUtility.Cleanup();
-            }
-
-            _previewRenderUtility = new PreviewRenderUtility();
         }
 
         private void SetupDefaultLights()
