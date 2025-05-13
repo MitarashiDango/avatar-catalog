@@ -12,10 +12,7 @@ namespace MitarashiDango.AvatarCatalog
     public class AvatarMetadataEditorWindow : EditorWindow
     {
         [SerializeField]
-        private VisualTreeAsset mainUxmlAsset;
-
-        [SerializeField]
-        private StyleSheet mainUssAsset;
+        private VisualTreeAsset _mainUxmlAsset;
 
         private ObjectField _avatarObjectField;
         private VisualElement _metadataEditorArea;
@@ -58,7 +55,15 @@ namespace MitarashiDango.AvatarCatalog
 
         public void CreateGUI()
         {
-            LoadUxmlAndUss();
+            if (_mainUxmlAsset != null)
+            {
+                _mainUxmlAsset.CloneTree(rootVisualElement);
+            }
+            else
+            {
+                Debug.LogError($"Cannot load UXML file");
+                return;
+            }
 
             var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
             if (preferredFontFamilyName != "")
@@ -115,28 +120,6 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             UpdateUIState();
-        }
-
-        private void LoadUxmlAndUss()
-        {
-            if (mainUxmlAsset != null)
-            {
-                mainUxmlAsset.CloneTree(rootVisualElement);
-            }
-            else
-            {
-                Debug.LogError($"Cannot load UXML file");
-                return;
-            }
-
-            if (mainUssAsset != null)
-            {
-                rootVisualElement.styleSheets.Add(mainUssAsset);
-            }
-            else
-            {
-                Debug.LogWarning($"Cannot load USS file. Using default styles.");
-            }
         }
 
         private void SetTargetAvatar(GameObject targetAvatar)
