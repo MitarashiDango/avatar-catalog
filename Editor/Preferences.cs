@@ -7,33 +7,14 @@ namespace MitarashiDango.AvatarCatalog
     [Serializable]
     public class Preferences : ScriptableObject
     {
-        private static Preferences _instance;
-
         public static readonly float AvatarCatalogMinItemSize = 128;
         public static readonly float AvatarCatalogMaxItemSize = 256;
         public static readonly float DefaultAvatarCatalogMaxItemSize = 160;
 
-        public static string ASSET_FILE_PATH = "Assets/Avatar Catalog User Data/Preferences.asset";
+        public static string AssetFilePath = "Assets/Avatar Catalog User Data/Preferences.asset";
 
         [SerializeField]
         private float _avatarCatalogItemSize = DefaultAvatarCatalogMaxItemSize;
-
-        protected Preferences() : base()
-        {
-        }
-
-        public static Preferences Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    LoadOrNewInstance();
-                }
-
-                return _instance;
-            }
-        }
 
         public float avatarCatalogItemSize
         {
@@ -56,63 +37,35 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        public static void Save(bool withSaveAssets = false)
+        public static void Save(Preferences asset)
         {
-            var asset = AssetDatabase.LoadAssetAtPath<Preferences>(ASSET_FILE_PATH);
-            if (asset == null)
-            {
-                AssetDatabase.CreateAsset(Instance, ASSET_FILE_PATH);
-            }
-            else
-            {
-                EditorUtility.CopySerialized(Instance, asset);
-                EditorUtility.SetDirty(asset);
-            }
-
-            if (withSaveAssets)
-            {
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-            }
+            EditorUtility.SetDirty(asset);
+            AssetDatabase.SaveAssetIfDirty(asset);
         }
 
-        public static void LoadOrNewInstance()
+        public static Preferences LoadOrCreateFile()
         {
-            Load();
-
-            if (_instance != null)
-            {
-                return;
-            }
-
-            _instance = CreateInstance<Preferences>();
-        }
-
-        public static void LoadOrCreateFile()
-        {
-            Load();
-
-            if (_instance != null)
-            {
-                return;
-            }
-
-            var asset = ScriptableObject.CreateInstance<Preferences>();
-            AssetDatabase.CreateAsset(asset, ASSET_FILE_PATH);
-
-            _instance = asset;
-        }
-
-        public static void Load()
-        {
-            var asset = AssetDatabase.LoadAssetAtPath<Preferences>(ASSET_FILE_PATH);
+            var asset = Load();
             if (asset != null)
             {
-                _instance = asset;
-                return;
+                return asset;
             }
 
-            _instance = null;
+            asset = CreateInstance<Preferences>();
+            AssetDatabase.CreateAsset(asset, AssetFilePath);
+
+            return asset;
+        }
+
+        public static Preferences Load()
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<Preferences>(AssetFilePath);
+            if (asset != null)
+            {
+                return asset;
+            }
+
+            return null;
         }
     }
 }

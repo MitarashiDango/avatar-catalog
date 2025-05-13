@@ -47,6 +47,15 @@ namespace MitarashiDango.AvatarCatalog
             window.SetTargetAvatar(targetAvatar);
         }
 
+        public void OnLostFocus()
+        {
+            if (_currentTargetAvatar != null && _currentMetadata != null)
+            {
+                var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
+                DatabaseBuilder.RefreshIndexes(globalObjectId);
+            }
+        }
+
         public void CreateGUI()
         {
             LoadUxmlAndUss();
@@ -77,6 +86,11 @@ namespace MitarashiDango.AvatarCatalog
             _deleteMetadataButton.RegisterCallback<ClickEvent>((e) => OnDeleteMetadataButtonClicked());
 
             // 初期状態を設定
+            if (_currentTargetAvatar != null)
+            {
+                SetTargetAvatar(_currentTargetAvatar);
+            }
+
             HideHelpBox();
             UpdateUIState();
 
@@ -143,6 +157,12 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnAvatarObjectChanged(ChangeEvent<Object> evt)
         {
+            if (_currentTargetAvatar != null && _currentMetadata != null)
+            {
+                var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
+                DatabaseBuilder.RefreshIndexes(globalObjectId);
+            }
+
             var newTarget = evt.newValue as GameObject;
             _currentMetadata = null; // アバターが変わったらメタデータは一旦リセット
 
@@ -189,6 +209,19 @@ namespace MitarashiDango.AvatarCatalog
                 _currentMetadata = AvatarMetadataUtil.CreateMetadata(_currentTargetAvatar);
                 if (_currentMetadata != null)
                 {
+                    var avatarCatalogDatabase = AvatarCatalogDatabase.Load();
+                    if (avatarCatalogDatabase != null && avatarCatalogDatabase.IsExists(_currentTargetAvatar))
+                    {
+                        var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
+                        var entry = avatarCatalogDatabase.Get(globalObjectId);
+                        if (entry != null)
+                        {
+                            var path = AssetDatabase.GetAssetPath(_currentMetadata);
+                            entry.avatarMetadataGuid = AssetDatabase.GUIDFromAssetPath(path).ToString();
+                            AvatarCatalogDatabase.Save(avatarCatalogDatabase);
+                        }
+                    }
+
                     PopulateUIWithMetadata();
                 }
                 else
@@ -213,6 +246,21 @@ namespace MitarashiDango.AvatarCatalog
                     if (deleted)
                     {
                         _currentMetadata = null;
+
+                        var avatarCatalogDatabase = AvatarCatalogDatabase.Load();
+                        if (avatarCatalogDatabase != null && avatarCatalogDatabase.IsExists(_currentTargetAvatar))
+                        {
+                            var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
+                            var entry = avatarCatalogDatabase.Get(globalObjectId);
+                            if (entry != null)
+                            {
+                                entry.avatarMetadataGuid = "";
+                                AvatarCatalogDatabase.Save(avatarCatalogDatabase);
+                                AssetDatabase.Refresh();
+                                DatabaseBuilder.RefreshIndexes(globalObjectId);
+                            }
+                        }
+
                         PopulateUIWithMetadata();
                     }
                     else

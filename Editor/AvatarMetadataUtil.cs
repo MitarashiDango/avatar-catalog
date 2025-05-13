@@ -8,14 +8,33 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarMetadataUtil
     {
-        public const string AvatarMetadataFolderPath = "Assets/Avatar Catalog User Data/AvatarMetadata";
+        /// <summary>
+        /// アバターメタデータのアセットパスを取得します
+        /// </summary>
+        /// <param name="filename">対象のアセットファイル名</param>
+        /// <returns>アバターメタデータのファイルパスを返却する。</returns>
+        public static string GetMetadataPath(string filename)
+        {
+            return $"{FolderUtil.AvatarMetadataFolderPath}/{filename}.asset";
+        }
+
+        /// <summary>
+        /// アバターメタデータのアセットパスを取得します
+        /// </summary>
+        /// <param name="avatarRootObject">対象のアバターオブジェクト</param>
+        /// <returns>アバターメタデータのファイルパスを返却する。</returns>
+        public static string GetMetadataPath(GameObject avatarRootObject)
+        {
+            var fileName = GenerateFileName(avatarRootObject);
+            return $"{FolderUtil.AvatarMetadataFolderPath}/{fileName}.asset";
+        }
 
         /// <summary>
         /// GlobalObjectIdからアセットパスを取得します
         /// </summary>
         /// <param name="id">対象の GlobalObjectId</param>
         /// <returns>アバターメタデータのファイルパスを返却する。無効な GlobalObjectId の場合は null を返却する。</returns>
-        public static string GetMetadataPath(GlobalObjectId id)
+        private static string GetMetadataPath(GlobalObjectId id)
         {
             if (id.Equals(default) && id.identifierType == 0)
             {
@@ -26,28 +45,52 @@ namespace MitarashiDango.AvatarCatalog
             FolderUtil.CreateUserDataFolder();
             FolderUtil.CreateAvatarMetadataFolder();
 
-            return $"{AvatarMetadataFolderPath}/{id.assetGUID}_{id.targetObjectId}_{id.targetPrefabId}.asset";
+            return $"{FolderUtil.AvatarMetadataFolderPath}/{id.assetGUID}_{id.targetObjectId}_{id.targetPrefabId}.asset";
         }
 
         /// <summary>
         /// 指定されたアバターオブジェクトに対応するアバターメタデータをロードします
         /// </summary>
-        /// <param name="avatarObject">対象のアバターオブジェクト</param>
+        /// <param name="avatarRootObject">対象のアバターオブジェクト</param>
         /// <returns>ロードされたアバターメタデータを返却する。GlobalObjectId が無効な場合は null を返却する。</returns>
-        public static AvatarMetadata LoadMetadata(GameObject avatarObject)
+        public static AvatarMetadata LoadMetadata(GameObject avatarRootObject)
         {
-            if (avatarObject == null)
+            if (avatarRootObject == null)
             {
                 return null;
             }
 
-            GlobalObjectId id = GlobalObjectId.GetGlobalObjectIdSlow(avatarObject);
-            if (id.Equals(default))
+            // マイグレーション処理
+            MigrateAvatarMetadataSettings(avatarRootObject);
+
+            var avatarMetadataSettings = avatarRootObject.GetComponent<AvatarMetadataSettings>();
+            if (avatarMetadataSettings == null)
             {
                 return null;
             }
 
-            return LoadMetadata(id);
+            return avatarMetadataSettings.avatarMetadata;
+        }
+
+        /// <summary>
+        /// アバターメタデータをロードします
+        /// </summary>
+        /// <param name="avatarMetadataGuid">アバターメタデータファイルのGUID</param>
+        /// <returns>ロードされたアバターメタデータを返却する。ロード出来なかった場合は null を返却する。</returns>
+        public static AvatarMetadata LoadMetadata(GUID avatarMetadataGuid)
+        {
+            if (avatarMetadataGuid.Empty())
+            {
+                return null;
+            }
+
+            var filePath = AssetDatabase.GUIDToAssetPath(avatarMetadataGuid);
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return null;
+            }
+
+            return AssetDatabase.LoadAssetAtPath<AvatarMetadata>(filePath);
         }
 
         /// <summary>
@@ -55,7 +98,7 @@ namespace MitarashiDango.AvatarCatalog
         /// </summary>
         /// <param name="id">対象のGlobalObjectId</param>
         /// <returns>ロードされたアバターメタデータを返却する。GlobalObjectId が無効な場合は null を返却する。</returns>
-        public static AvatarMetadata LoadMetadata(GlobalObjectId id)
+        private static AvatarMetadata LoadMetadata(GlobalObjectId id)
         {
             var path = GetMetadataPath(id);
             if (string.IsNullOrEmpty(path))
@@ -64,81 +107,6 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             return AssetDatabase.LoadAssetAtPath<AvatarMetadata>(path);
-        }
-
-        /// <summary>
-        /// 指定された GlobalObjectId に対応するアバターメタデータをロードまたは新規作成します
-        /// </summary>
-        /// <param name="id">対象のGlobalObjectId</param>
-        /// <param name="createdNew">新規作成された場合にtrue</param>
-        /// <returns>ロードまたは作成されたアバターメタデータを返却する。GlobalObjectId が無効な場合は null を返却する。</returns>
-        public static AvatarMetadata LoadOrCreateMetadata(GameObject avatarObject)
-        {
-            if (avatarObject == null)
-            {
-                return null;
-            }
-
-            GlobalObjectId globalId = GlobalObjectId.GetGlobalObjectIdSlow(avatarObject);
-            if (globalId.Equals(default))
-            {
-                return null;
-            }
-
-            string metadataPath = GetMetadataPath(globalId);
-            if (string.IsNullOrEmpty(metadataPath))
-            {
-                return null;
-            }
-
-            return AssetDatabase.LoadAssetAtPath<AvatarMetadata>(metadataPath);
-        }
-
-        /// <summary>
-        /// 指定された GlobalObjectId に対応するアバターメタデータをロードまたは新規作成します
-        /// </summary>
-        /// <param name="id">対象のGlobalObjectId</param>
-        /// <param name="createdNew">新規作成された場合にtrue</param>
-        /// <returns>ロードまたは作成されたアバターメタデータを返却する。GlobalObjectId が無効な場合は null を返却する。</returns>
-        public static AvatarMetadata LoadOrCreateMetadata(GlobalObjectId id, out bool createdNew)
-        {
-            createdNew = false;
-            var path = GetMetadataPath(id);
-            if (string.IsNullOrEmpty(path))
-            {
-                return null;
-            }
-
-            AvatarMetadata data = AssetDatabase.LoadAssetAtPath<AvatarMetadata>(path);
-            if (data == null)
-            {
-                data = ScriptableObject.CreateInstance<AvatarMetadata>();
-                data.avatarGlobalObjectId = id.ToString();
-
-                FolderUtil.CreateAvatarMetadataFolder();
-
-                try
-                {
-                    AssetDatabase.CreateAsset(data, path);
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                    createdNew = true;
-                    Debug.Log($"Created new metadata asset at: {path}");
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogError($"Failed to create asset {path}: {ex.Message}");
-                    return null;
-                }
-
-                data = AssetDatabase.LoadAssetAtPath<AvatarMetadata>(path);
-                if (data == null)
-                {
-                    Debug.LogError($"Failed to load newly created asset at {path}");
-                }
-            }
-
-            return data;
         }
 
         /// <summary>
@@ -158,51 +126,59 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        public static AvatarMetadata CreateMetadata(GameObject avatarObject)
+        public static AvatarMetadata CreateMetadata(GameObject avatarRootObject)
         {
-            if (avatarObject == null)
+            if (avatarRootObject == null)
             {
                 return null;
             }
 
-            var vrcDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
+            var vrcDescriptor = avatarRootObject.GetComponent<VRCAvatarDescriptor>();
             if (vrcDescriptor == null)
             {
-                Debug.LogWarning($"GameObject '{avatarObject.name}' does not have a VRCAvatarDescriptor component. Cannot create metadata.");
+                Debug.LogWarning($"GameObject '{avatarRootObject.name}' does not have a VRCAvatarDescriptor component. Cannot create metadata.");
                 return null;
             }
 
+            // マイグレーション処理
+            MigrateAvatarMetadataSettings(avatarRootObject);
 
-            GlobalObjectId globalId = GlobalObjectId.GetGlobalObjectIdSlow(avatarObject);
-            if (globalId.Equals(default))
+            string metadataPath;
+            var avatarMetadataSettings = avatarRootObject.GetComponent<AvatarMetadataSettings>();
+            if (avatarMetadataSettings != null && avatarMetadataSettings.avatarMetadata != null)
             {
-                return null;
-            }
-
-            string metadataPath = GetMetadataPath(globalId);
-            if (string.IsNullOrEmpty(metadataPath))
-            {
-                return null;
-            }
-
-            if (AssetDatabase.LoadAssetAtPath<AvatarMetadata>(metadataPath) != null)
-            {
-                Debug.LogWarning($"Metadata already exists for {avatarObject.name} at {metadataPath}. Returning existing one.");
-                return AssetDatabase.LoadAssetAtPath<AvatarMetadata>(metadataPath);
+                metadataPath = AssetDatabase.GetAssetPath(avatarMetadataSettings.avatarMetadata);
+                Debug.LogWarning($"Metadata already exists for {avatarRootObject.name} at {metadataPath}. Returning existing one.");
+                return avatarMetadataSettings.avatarMetadata;
             }
 
             AvatarMetadata newMetadata = ScriptableObject.CreateInstance<AvatarMetadata>();
-            newMetadata.avatarGlobalObjectId = globalId.ToString();
             newMetadata.comment = "";
             newMetadata.tags = new List<string>();
 
+            metadataPath = GetMetadataPath(avatarRootObject);
+
             try
             {
-                AssetDatabase.CreateAsset(newMetadata, metadataPath);
+                FolderUtil.CreateUserDataFolder();
+                FolderUtil.CreateAvatarMetadataFolder();
+
+                AssetDatabase.CreateAsset(newMetadata, AssetDatabase.GenerateUniqueAssetPath(metadataPath));
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
 
-                Debug.Log($"Created metadata for {avatarObject.name} at {metadataPath}");
+                if (avatarMetadataSettings == null)
+                {
+                    // アバターオブジェクトへコンポーネントを追加
+                    avatarMetadataSettings = avatarRootObject.AddComponent<AvatarMetadataSettings>();
+                }
+
+                avatarMetadataSettings.avatarMetadata = newMetadata;
+
+                EditorUtility.SetDirty(avatarMetadataSettings);
+                AssetDatabase.SaveAssets();
+
+                Debug.Log($"Created metadata for {avatarRootObject.name} at {metadataPath}");
                 return newMetadata;
             }
             catch (System.Exception e)
@@ -219,46 +195,133 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        public static bool DeleteMetadata(GameObject avatarObject)
+        public static bool DeleteMetadata(GameObject avatarRootObject)
         {
-            if (avatarObject == null)
+            if (avatarRootObject == null)
             {
                 return false;
             }
 
-            GlobalObjectId globalId = GlobalObjectId.GetGlobalObjectIdSlow(avatarObject);
-            if (globalId.Equals(default))
+            var metadataPath = "";
+            var avatarMetadataSettings = avatarRootObject.GetComponent<AvatarMetadataSettings>();
+            if (avatarMetadataSettings != null)
             {
-                return false;
+                metadataPath = AssetDatabase.GetAssetPath(avatarMetadataSettings.avatarMetadata);
             }
 
-            string metadataPath = GetMetadataPath(globalId);
-            if (string.IsNullOrEmpty(metadataPath))
+            // 旧形式のファイル名となっているアバターメタデータファイルを検索
+            if (metadataPath == "")
             {
-                return false;
+                GlobalObjectId globalId = GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject);
+                if (globalId.Equals(default))
+                {
+                    return false;
+                }
+
+                metadataPath = GetMetadataPath(globalId);
+                if (string.IsNullOrEmpty(metadataPath))
+                {
+                    return false;
+                }
             }
 
             // アセットが存在するかどうかで判断
             if (AssetDatabase.LoadAssetAtPath<AvatarMetadata>(metadataPath) == null)
             {
-                Debug.LogWarning($"Metadata not found for {avatarObject.name} at {metadataPath}. Cannot delete.");
+                Debug.LogWarning($"Metadata not found for {avatarRootObject.name} at {metadataPath}. Cannot delete.");
                 return false;
+            }
+
+            // アバターオブジェクトからコンポーネントを削除
+            if (avatarMetadataSettings != null)
+            {
+                Object.DestroyImmediate(avatarMetadataSettings);
             }
 
             bool result = AssetDatabase.DeleteAsset(metadataPath);
             if (result)
             {
-                Debug.Log($"Deleted metadata for {avatarObject.name} at {metadataPath}");
+                Debug.Log($"Deleted metadata for {avatarRootObject.name} at {metadataPath}");
 
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
             else
             {
-                Debug.LogError($"Failed to delete metadata for {avatarObject.name} at {metadataPath}");
+                Debug.LogError($"Failed to delete metadata for {avatarRootObject.name} at {metadataPath}");
             }
 
             return result;
+        }
+
+        public static bool MigrateAvatarMetadataSettings(GameObject avatarRootObject)
+        {
+            var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject);
+
+            var avatarMetadataSettings = avatarRootObject.GetComponent<AvatarMetadataSettings>();
+            if (avatarMetadataSettings != null)
+            {
+                return false;
+            }
+
+            var avatarMetadata = LoadMetadata(avatarGlobalObjectId);
+            if (avatarMetadata == null)
+            {
+                return false;
+            }
+
+            avatarMetadataSettings = avatarRootObject.AddComponent<AvatarMetadataSettings>();
+            avatarMetadataSettings.avatarMetadata = avatarMetadata;
+            EditorUtility.SetDirty(avatarMetadataSettings);
+
+            var filePath = AssetDatabase.GetAssetPath(avatarMetadata);
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return true;
+            }
+
+            RenameAvatarMetadataFile(filePath, GenerateFileName(avatarRootObject));
+
+            return true;
+        }
+
+        /// <summary>
+        /// アバターメタデータファイルを現在のアバター名およびシーン名に合わせてリネームする
+        /// </summary>
+        /// <param name="fileGUID">リネーム対象ファイルのGUID</param>
+        /// <param name="avatarRootObject">アバターオブジェクト</param>
+        /// <returns>リネーム後のファイルパス</returns>
+        public static string RenameAvatarMetadataFile(GUID fileGUID, GameObject avatarRootObject)
+        {
+            var fileName = GenerateFileName(avatarRootObject);
+            return RenameAvatarMetadataFile(fileGUID, fileName);
+        }
+
+        /// <summary>
+        /// アバターメタデータファイルをリネームする
+        /// </summary>
+        /// <param name="fileGUID">リネーム対象ファイルのGUID</param>
+        /// <param name="newFileNameWithoutExtension">リネーム後の名前（拡張子なし）</param>
+        /// <returns>リネーム後のファイルパス</returns>
+        public static string RenameAvatarMetadataFile(GUID fileGUID, string newFileNameWithoutExtension)
+        {
+            var filePath = AssetDatabase.GUIDToAssetPath(fileGUID);
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return filePath;
+            }
+
+            return RenameAvatarMetadataFile(filePath, newFileNameWithoutExtension);
+        }
+
+        public static string RenameAvatarMetadataFile(string filePath, string newFileNameWithoutExtension)
+        {
+            return AssetDatabase.RenameAsset(filePath, newFileNameWithoutExtension);
+        }
+
+        public static string GenerateFileName(GameObject avatarRootObject)
+        {
+            return $"{avatarRootObject.scene.name}_{avatarRootObject.name}";
         }
     }
 }

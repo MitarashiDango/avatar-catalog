@@ -10,31 +10,55 @@ namespace MitarashiDango.AvatarCatalog
     {
         public static readonly string AssetFilePath = "Assets/Avatar Catalog User Data/AvatarSearchIndex.asset";
 
-        public List<AvatarSearchIndexEntry> entries = new List<AvatarSearchIndexEntry>();
+        [SerializeField]
+        private List<AvatarSearchIndexEntry> _entries = new List<AvatarSearchIndexEntry>();
 
-        public List<AvatarSearchIndexEntry> Find(string[] searchWords)
+        public List<AvatarSearchIndexEntry> entries
         {
-            return entries.Where(entry => entry.IsMatch(searchWords)).ToList();
+            get => _entries;
+            set
+            {
+                _entries = value;
+                EditorUtility.SetDirty(this);
+            }
         }
 
-        public void Add(string globalObjectId, List<string> values)
+        public AvatarSearchIndexEntry Get(GlobalObjectId avatarGlobalObjectId)
         {
-            var entry = new AvatarSearchIndexEntry();
-            entry.globalObjectId = globalObjectId;
-            entry.values = values.Distinct().Select(value => value.ToLower()).ToList();
-            entries.Add(entry);
+            return Get(avatarGlobalObjectId.ToString());
+        }
+
+        public AvatarSearchIndexEntry Get(string avatarGlobalObjectId)
+        {
+            return entries.Where(entry => entry.avatarGlobalObjectId == avatarGlobalObjectId).FirstOrDefault();
+        }
+
+        public void Set(AvatarSearchIndexEntry avatarSearchIndexEntry)
+        {
+            var index = entries.FindIndex(entry => entry.avatarGlobalObjectId == avatarSearchIndexEntry.avatarGlobalObjectId);
+            if (index >= 0)
+            {
+                entries[index] = avatarSearchIndexEntry;
+            }
+            else
+            {
+                entries.Add(avatarSearchIndexEntry);
+            }
+
+            EditorUtility.SetDirty(this);
+        }
+
+        public IEnumerable<AvatarSearchIndexEntry> Find(string[] searchWords)
+        {
+            return entries.Where(entry => entry.IsMatch(searchWords));
         }
 
         public List<string> GetGlobalObjectIds(string[] searchWords)
         {
-            return Find(searchWords).Select(entry => entry.globalObjectId).ToList();
+            return Find(searchWords).Select(entry => entry.avatarGlobalObjectId).ToList();
         }
 
-        /// <summary>
-        /// アバター検索用インデックスをロードします
-        /// </summary>
-        /// <returns>ロードされたアバター検索用インデックス, ファイルが存在しない場合は新しいインスタンス</returns>
-        public static AvatarSearchIndex LoadOrNewInstance()
+        public static AvatarSearchIndex LoadOrCreateFile()
         {
             var asset = Load();
             if (asset != null)
@@ -42,16 +66,13 @@ namespace MitarashiDango.AvatarCatalog
                 return asset;
             }
 
-            return CreateNewInstance();
-        }
+            // フォルダー作成
+            FolderUtil.CreateUserDataFolder();
 
-        /// <summary>
-        /// 新しいアバター検索用インデックスのインスタンスを返却します
-        /// </summary>
-        /// <returns>アバター検索用インデックス</returns>
-        public static AvatarSearchIndex CreateNewInstance()
-        {
-            return CreateInstance<AvatarSearchIndex>();
+            asset = CreateInstance<AvatarSearchIndex>();
+            AssetDatabase.CreateAsset(asset, AssetFilePath);
+
+            return asset;
         }
 
         /// <summary>
@@ -72,36 +93,41 @@ namespace MitarashiDango.AvatarCatalog
         /// <summary>
         /// アバター検索用インデックスを保存します
         /// </summary>
-        /// <param name="asi">保存対象のアバター検索用インデックス情報</param>
-        /// <param name="withSaveAssets">アセット保存処理を呼び出すかどうか</param>
-        public static void Save(AvatarSearchIndex asi, bool withSaveAssets = false)
+        /// <param name="asset">保存対象のアバター検索用インデックス情報</param>
+        public static void Save(AvatarSearchIndex asset)
         {
-            var asset = AssetDatabase.LoadAssetAtPath<AvatarSearchIndex>(AssetFilePath);
-            if (asset == null)
-            {
-                // フォルダー作成
-                FolderUtil.CreateUserDataFolder();
-
-                AssetDatabase.CreateAsset(asi, AssetFilePath);
-            }
-            else
-            {
-                EditorUtility.CopySerialized(asi, asset);
-                EditorUtility.SetDirty(asset);
-            }
-
-            if (withSaveAssets)
-            {
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-            }
+            EditorUtility.SetDirty(asset);
+            AssetDatabase.SaveAssetIfDirty(asset);
+            AssetDatabase.Refresh();
         }
 
         [Serializable]
         public class AvatarSearchIndexEntry
         {
-            public string globalObjectId = "";
-            public List<string> values = new List<string>();
+            public string avatarGlobalObjectId;
+
+            [SerializeField]
+            private List<string> _values;
+
+            public AvatarSearchIndexEntry()
+            {
+                avatarGlobalObjectId = "";
+                _values = new List<string>();
+            }
+
+            public AvatarSearchIndexEntry(string avatarGlobalObjectId, List<string> values)
+            {
+                this.avatarGlobalObjectId = avatarGlobalObjectId;
+
+                _values = new List<string>();
+                SetValues(values);
+            }
+
+            public List<string> Values
+            {
+                get => _values;
+                set => SetValues(value);
+            }
 
             public bool IsMatch(string[] searchWords)
             {
@@ -118,7 +144,16 @@ namespace MitarashiDango.AvatarCatalog
 
             public bool IsMatch(string searchWord)
             {
-                return values.Exists(value => value.Contains(searchWord));
+                return _values.Exists(value => value.Contains(searchWord));
+            }
+
+            private void SetValues(List<string> values)
+            {
+                _values = values
+                    .Where(v => !string.IsNullOrEmpty(v))
+                    .Distinct()
+                    .Select(value => value.ToLower())
+                    .ToList();
             }
         }
     }
