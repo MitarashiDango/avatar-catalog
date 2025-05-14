@@ -69,6 +69,12 @@ namespace MitarashiDango.AvatarCatalog
                 return filePath;
             }
 
+            // ファイル名が変更されていない場合、何も行わない
+            if (Path.GetFileNameWithoutExtension(filePath) == newFileNameWithoutExtension)
+            {
+                return filePath;
+            }
+
             return AssetDatabase.RenameAsset(filePath, newFileNameWithoutExtension);
         }
 
