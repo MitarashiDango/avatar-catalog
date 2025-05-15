@@ -7,7 +7,7 @@ namespace MitarashiDango.AvatarCatalog.Runtime
     /// <summary>
     /// アセットの製品情報
     /// </summary>
-    public class AssetProductDetailsDescriptor : ScriptableObject
+    public class AssetProductDetails : ScriptableObject
     {
         /// <summary>
         /// 製品名
