@@ -7,6 +7,7 @@ namespace MitarashiDango.AvatarCatalog.Runtime
     /// <summary>
     /// アセットの製品情報
     /// </summary>
+    [CreateAssetMenu(menuName = "Avatar Catalog/Asset Product Details")]
     public class AssetProductDetails : ScriptableObject
     {
         /// <summary>
@@ -27,7 +28,7 @@ namespace MitarashiDango.AvatarCatalog.Runtime
         /// <summary>
         /// 発売日時
         /// </summary>
-        public DateTime releaseDateTime;
+        // public DateTime releaseDateTime;
 
         /// <summary>
         /// 製品のタグ情報
