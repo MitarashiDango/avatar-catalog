@@ -117,7 +117,7 @@ namespace MitarashiDango.AvatarCatalog
             if (avatarObject == null)
             {
                 _currentTargetAvatar = null;
-                UnloadMetadata();
+                UnsetMetadata();
             }
 
             UpdateUIState();
@@ -149,7 +149,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var newTarget = evt.newValue as GameObject;
 
-            UnloadMetadata(); // アバターが変わったらメタデータは一旦リセット
+            UnsetMetadata(); // アバターが変わったらメタデータは一旦リセット
 
             _currentTargetAvatar = newTarget;
             if (_currentTargetAvatar != null && _currentTargetAvatar.GetComponent<VRCAvatarDescriptor>() != null)
@@ -217,7 +217,7 @@ namespace MitarashiDango.AvatarCatalog
                     bool deleted = AvatarMetadataUtil.DeleteMetadata(_currentTargetAvatar);
                     if (deleted)
                     {
-                        UnloadMetadata();
+                        UnsetMetadata();
 
                         var avatarCatalogDatabase = AvatarCatalogDatabase.Load();
                         if (avatarCatalogDatabase != null && avatarCatalogDatabase.IsExists(_currentTargetAvatar))
@@ -242,7 +242,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void UnloadMetadata()
+        private void UnsetMetadata()
         {
             rootVisualElement.Unbind();
             _serializedObject = null;
@@ -260,7 +260,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void LoadMetadataForCurrentAvatar()
         {
-            UnloadMetadata();
+            UnsetMetadata();
 
             if (_currentTargetAvatar != null)
             {
