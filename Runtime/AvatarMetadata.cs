@@ -15,5 +15,10 @@ namespace MitarashiDango.AvatarCatalog.Runtime
         /// タグ情報
         /// </summary>
         public List<string> tags = new List<string>();
+
+        /// <summary>
+        /// アセット製品情報
+        /// </summary>
+        public List<AssetProductDetail> assetProductDetails = new List<AssetProductDetail>();
     }
 }

@@ -172,10 +172,22 @@ namespace MitarashiDango.AvatarCatalog
                 {
                     words.Add(avatarMetadata.comment);
                     words.AddRange(avatarMetadata.tags);
+
+                    var assetProductDetails = avatarMetadata.assetProductDetails.Where(assetProductDetail => assetProductDetail != null).Distinct();
+                    foreach (var assetProductDetail in assetProductDetails)
+                    {
+                        words.Add(assetProductDetail.productName);
+                        words.Add(assetProductDetail.creatorName);
+                        var tags = assetProductDetail.tags.Where(tag => !string.IsNullOrEmpty(tag)).ToList();
+                        if (tags.Count > 0)
+                        {
+                            words.AddRange(tags);
+                        }
+                    }
                 }
             }
 
-            return words;
+            return words.Distinct().ToList();
         }
 
         private static void CleanupFiles(Dictionary<string, AvatarCatalogDatabase.AvatarCatalogEntry> prevAvatars, List<AvatarCatalogDatabase.AvatarCatalogEntry> newAvatars)

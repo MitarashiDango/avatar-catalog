@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:TextField picking-mode="Ignore" label="Product URL" name="product-url-field" binding-path="productUrl" />
+    <ui:Button text="商品情報を取得" parse-escape-sequences="true" display-tooltip-when-elided="true" name="fetch-product-details-button" />
+    <ui:TextField picking-mode="Ignore" label="Product Name" value="filler text" binding-path="productName" name="product-name-field" />
+    <ui:TextField picking-mode="Ignore" label="Creator Name" value="filler text" binding-path="creatorName" name="creator-name-field" />
+    <ui:TextField picking-mode="Ignore" label="Description" value="filler text" multiline="true" binding-path="description" name="description-field" style="max-height: 300px; white-space: normal; min-height: 100px;" />
+    <uie:PropertyField name="tags-field" binding-path="tags" />
+    <ui:TextField picking-mode="Ignore" label="Release datetime" name="release-datetime-field" binding-path="releaseDateTime" />
+    <uie:PropertyField name="licenses-field" binding-path="licenses" label="Licenses" />
+</ui:UXML>
