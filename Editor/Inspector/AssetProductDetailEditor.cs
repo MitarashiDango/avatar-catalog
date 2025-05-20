@@ -13,8 +13,8 @@ using UnityEngine.UIElements;
 
 namespace MitarashiDango.AvatarCatalog
 {
-    [CustomEditor(typeof(AssetProductDetails))]
-    public class AssetProductDetailsEditor : Editor
+    [CustomEditor(typeof(AssetProductDetail))]
+    public class AssetProductDetailEditor : Editor
     {
         [SerializeField]
         private VisualTreeAsset _mainUxmlAsset;

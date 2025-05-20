@@ -6,8 +6,8 @@ namespace MitarashiDango.AvatarCatalog.Runtime
     /// <summary>
     /// アセットの製品情報
     /// </summary>
-    [CreateAssetMenu(menuName = "Avatar Catalog/Asset Product Details")]
-    public class AssetProductDetails : ScriptableObject
+    [CreateAssetMenu(menuName = "Avatar Catalog/Asset Product Detail")]
+    public class AssetProductDetail : ScriptableObject
     {
         /// <summary>
         /// 製品名
