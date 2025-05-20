@@ -18,15 +18,15 @@
         <ui:VisualElement name="metadata-editor-area" class="section">
             <ui:VisualElement class="field-group">
                 <ui:Label text="コメント" class="field-title" />
-                <ui:TextField name="comment-field" multiline="true" binding-path="comment" class="comment-field" />
+                <ui:TextField name="comment-field" multiline="true" binding-path="comment" class="comment-field field-content" />
             </ui:VisualElement>
             <ui:VisualElement class="field-group">
                 <ui:Label text="タグ情報" class="field-title" />
-                <uie:PropertyField name="tags-field" binding-path="tags" />
+                <uie:PropertyField name="tags-field" binding-path="tags" class="field-content" />
             </ui:VisualElement>
             <ui:VisualElement class="field-group">
                 <ui:Label text="使用しているアセット情報" class="field-title" />
-                <uie:PropertyField name="asset-product-details-field" binding-path="assetProductDetails" />
+                <uie:PropertyField name="asset-product-details-field" binding-path="assetProductDetails" class="field-content" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:ScrollView>

@@ -50,6 +50,11 @@
     margin-left: 2px;
 }
 
+.field-content {
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
 .comment-field {
     min-height: 60px;
     max-height: 150px;
@@ -57,42 +62,6 @@
 
 .editor-container {
     min-height: 0px;
-}
-
-.tags-scroll-view {
-    min-height: 0px;
-    max-height: 200px;
-    border-width: 1px;
-    border-color: rgb(60, 60, 60);
-    margin-bottom: 5px;
-    flex-shrink: 0;
-}
-
-.tag-row {
-    flex-direction: row;
-    align-items: center;
-    margin-bottom: 2px;
-    padding: 0 2px;
-    flex-shrink: 0;
-}
-
-.tag-field {
-    flex-grow: 1;
-    flex-shrink: 0;
-    margin-right: 26px;
-}
-
-.tag-field .unity-base-text-field__input {
-    height: 18px;
-    padding-top: 1px;
-    padding-bottom: 1px;
-}
-
-.tag-delete-button {
-    min-width: 20px;
-    height: 18px;
-    padding: 0 5px;
-    margin-left: auto;
 }
 
 :disabled {
