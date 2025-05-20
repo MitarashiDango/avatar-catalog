@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:TextField picking-mode="Ignore" label="License name" name="license-name-field" binding-path="licenseName" />
+    <ui:TextField picking-mode="Ignore" label="License URL" name="license-url-field" binding-path="licenseUrl" />
+    <ui:TextField picking-mode="Ignore" label="License text" name="license-text-field" binding-path="licenseText" multiline="true" style="max-height: 300px; white-space: normal; min-height: 100px;" />
+</ui:UXML>

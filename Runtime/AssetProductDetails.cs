@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -28,7 +27,7 @@ namespace MitarashiDango.AvatarCatalog.Runtime
         /// <summary>
         /// 発売日時
         /// </summary>
-        // public DateTime releaseDateTime;
+        public string releaseDateTime;
 
         /// <summary>
         /// 製品のタグ情報
@@ -44,19 +43,5 @@ namespace MitarashiDango.AvatarCatalog.Runtime
         /// ライセンス情報
         /// </summary>
         public List<License> licenses;
-
-        [Serializable]
-        public class License
-        {
-            /// <summary>
-            /// ライセンス名
-            /// </summary>
-            public string licenseName;
-
-            /// <summary>
-            /// ライセンス情報が掲示されているページのURL
-            /// </summary>
-            public string licenseUrl;
-        }
     }
 }
