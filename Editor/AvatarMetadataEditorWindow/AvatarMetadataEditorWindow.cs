@@ -12,8 +12,6 @@ namespace MitarashiDango.AvatarCatalog
     public class AvatarMetadataEditorWindow : EditorWindow
     {
         private static readonly string _mainUxmlGuid = "b0a3fc0b034f9a14190f7e869708fcca";
-        [SerializeField]
-        private VisualTreeAsset _mainUxmlAsset;
 
         private ObjectField _avatarObjectField;
         private VisualElement _metadataEditorArea;
@@ -54,13 +52,13 @@ namespace MitarashiDango.AvatarCatalog
         public void CreateGUI()
         {
             var mainUxmlAsset = LoadMainUxmlAsset();
-            if (_mainUxmlAsset == null)
+            if (mainUxmlAsset == null)
             {
                 Debug.LogError($"Cannot load UXML file");
                 return;
             }
 
-            _mainUxmlAsset.CloneTree(rootVisualElement);
+            mainUxmlAsset.CloneTree(rootVisualElement);
 
             var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
             if (preferredFontFamilyName != "")
