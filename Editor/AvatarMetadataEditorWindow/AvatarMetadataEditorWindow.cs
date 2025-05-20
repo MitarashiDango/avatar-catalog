@@ -11,20 +11,18 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarMetadataEditorWindow : EditorWindow
     {
+        private static readonly string _mainUxmlGuid = "b0a3fc0b034f9a14190f7e869708fcca";
         [SerializeField]
         private VisualTreeAsset _mainUxmlAsset;
 
         private ObjectField _avatarObjectField;
         private VisualElement _metadataEditorArea;
-        private TextField _commentField;
-        private VisualElement _tagsContainer;
-        private Button _addTagButton;
         private Button _createMetadataButton;
         private Button _deleteMetadataButton;
         private HelpBox _statusHelpBox;
 
         private GameObject _currentTargetAvatar;
-        private AvatarMetadata _currentMetadata;
+        private SerializedObject _serializedObject;
 
         [MenuItem("Tools/Avatar Catalog/Avatar Metadata Editor")]
         public static void ShowWindow()
@@ -46,7 +44,7 @@ namespace MitarashiDango.AvatarCatalog
 
         public void OnLostFocus()
         {
-            if (_currentTargetAvatar != null && _currentMetadata != null)
+            if (_currentTargetAvatar != null && _serializedObject != null)
             {
                 var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
                 DatabaseBuilder.RefreshIndexes(globalObjectId);
@@ -55,15 +53,14 @@ namespace MitarashiDango.AvatarCatalog
 
         public void CreateGUI()
         {
-            if (_mainUxmlAsset != null)
-            {
-                _mainUxmlAsset.CloneTree(rootVisualElement);
-            }
-            else
+            var mainUxmlAsset = LoadMainUxmlAsset();
+            if (_mainUxmlAsset == null)
             {
                 Debug.LogError($"Cannot load UXML file");
                 return;
             }
+
+            _mainUxmlAsset.CloneTree(rootVisualElement);
 
             var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
             if (preferredFontFamilyName != "")
@@ -73,20 +70,15 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             // UI要素を取得
-            _avatarObjectField = rootVisualElement.Q<ObjectField>("avatarObjectField");
-            _metadataEditorArea = rootVisualElement.Q<VisualElement>("metadataEditorArea");
-            _commentField = rootVisualElement.Q<TextField>("commentField");
-            _tagsContainer = rootVisualElement.Q<VisualElement>("tagsContainer");
-            _addTagButton = rootVisualElement.Q<Button>("addTagButton");
-            _createMetadataButton = rootVisualElement.Q<Button>("createMetadataButton");
-            _deleteMetadataButton = rootVisualElement.Q<Button>("deleteMetadataButton");
-            _statusHelpBox = rootVisualElement.Q<HelpBox>("statusHelpBox");
+            _avatarObjectField = rootVisualElement.Q<ObjectField>("avatar-object-field");
+            _metadataEditorArea = rootVisualElement.Q<VisualElement>("metadata-editor-area");
+            _createMetadataButton = rootVisualElement.Q<Button>("create-metadata-button");
+            _deleteMetadataButton = rootVisualElement.Q<Button>("delete-metadata-button");
+            _statusHelpBox = rootVisualElement.Q<HelpBox>("status-helpbox");
 
             // イベントハンドラを登録
             _avatarObjectField.objectType = typeof(GameObject);
             _avatarObjectField.RegisterValueChangedCallback(OnAvatarObjectChanged);
-            _commentField.RegisterValueChangedCallback(OnCommentChanged);
-            _addTagButton.RegisterCallback<ClickEvent>((e) => OnAddTagButtonClicked());
             _createMetadataButton.RegisterCallback<ClickEvent>((e) => OnCreateMetadataButtonClicked());
             _deleteMetadataButton.RegisterCallback<ClickEvent>((e) => OnDeleteMetadataButtonClicked());
 
@@ -103,6 +95,17 @@ namespace MitarashiDango.AvatarCatalog
             EditorSceneManager.sceneOpened += OnSceneOpened;
         }
 
+        private VisualTreeAsset LoadMainUxmlAsset()
+        {
+            var path = AssetDatabase.GUIDToAssetPath(_mainUxmlGuid);
+            if (string.IsNullOrEmpty(path))
+            {
+                return null;
+            }
+
+            return AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(path);
+        }
+
         private void OnSceneOpened(Scene scene, OpenSceneMode mode)
         {
             var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
@@ -115,8 +118,8 @@ namespace MitarashiDango.AvatarCatalog
             var avatarObject = _avatarObjectField.value as GameObject;
             if (avatarObject == null)
             {
-                _currentMetadata = null;
                 _currentTargetAvatar = null;
+                UnloadMetadata();
             }
 
             UpdateUIState();
@@ -140,14 +143,15 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnAvatarObjectChanged(ChangeEvent<Object> evt)
         {
-            if (_currentTargetAvatar != null && _currentMetadata != null)
+            if (_currentTargetAvatar != null && _serializedObject != null)
             {
                 var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
                 DatabaseBuilder.RefreshIndexes(globalObjectId);
             }
 
             var newTarget = evt.newValue as GameObject;
-            _currentMetadata = null; // アバターが変わったらメタデータは一旦リセット
+
+            UnloadMetadata(); // アバターが変わったらメタデータは一旦リセット
 
             _currentTargetAvatar = newTarget;
             if (_currentTargetAvatar != null && _currentTargetAvatar.GetComponent<VRCAvatarDescriptor>() != null)
@@ -158,40 +162,23 @@ namespace MitarashiDango.AvatarCatalog
             UpdateUIState();
         }
 
-        private void OnCommentChanged(ChangeEvent<string> evt)
-        {
-            if (_currentMetadata != null && _currentMetadata.comment != evt.newValue)
-            {
-                _currentMetadata.comment = evt.newValue;
-                MarkDirty();
-            }
-        }
-
-        private void OnAddTagButtonClicked()
-        {
-            if (_currentMetadata != null)
-            {
-                _currentMetadata.tags.Add("");
-                CreateTagField("", _currentMetadata.tags.Count - 1);
-                MarkDirty();
-            }
-        }
-
         private void OnCreateMetadataButtonClicked()
         {
-            if (_currentTargetAvatar != null && _currentMetadata == null)
+            if (_currentTargetAvatar != null && _serializedObject == null)
             {
                 // VRC Avatar Descriptor があるか再度確認
                 if (_currentTargetAvatar.GetComponent<VRCAvatarDescriptor>() == null)
                 {
-                    ShowHelpBoxMessage("'{_currentTargetAvatar.name}' には VRC Avatar Descriptor がありません。", HelpBoxMessageType.Error);
+                    ShowHelpBoxMessage($"'{_currentTargetAvatar.name}' には VRC Avatar Descriptor がありません。", HelpBoxMessageType.Error);
                     UpdateUIState();
                     return;
                 }
 
-                _currentMetadata = AvatarMetadataUtil.CreateMetadata(_currentTargetAvatar);
-                if (_currentMetadata != null)
+                var avatarMetadata = AvatarMetadataUtil.CreateMetadata(_currentTargetAvatar);
+                if (avatarMetadata != null)
                 {
+                    SetMetadata(avatarMetadata);
+
                     var avatarCatalogDatabase = AvatarCatalogDatabase.Load();
                     if (avatarCatalogDatabase != null && avatarCatalogDatabase.IsExists(_currentTargetAvatar))
                     {
@@ -199,13 +186,11 @@ namespace MitarashiDango.AvatarCatalog
                         var entry = avatarCatalogDatabase.Get(globalObjectId);
                         if (entry != null)
                         {
-                            var path = AssetDatabase.GetAssetPath(_currentMetadata);
+                            var path = AssetDatabase.GetAssetPath(avatarMetadata);
                             entry.avatarMetadataGuid = AssetDatabase.GUIDFromAssetPath(path).ToString();
                             AvatarCatalogDatabase.Save(avatarCatalogDatabase);
                         }
                     }
-
-                    PopulateUIWithMetadata();
                 }
                 else
                 {
@@ -218,9 +203,15 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnDeleteMetadataButtonClicked()
         {
-            if (_currentTargetAvatar != null && _currentMetadata != null)
+            if (_currentTargetAvatar != null && _serializedObject != null)
             {
-                string path = AssetDatabase.GetAssetPath(_currentMetadata);
+                var avatarMetadataSetting = _currentTargetAvatar.GetComponent<AvatarMetadataSettings>();
+                if (avatarMetadataSetting.avatarMetadata == null)
+                {
+                    return;
+                }
+
+                string path = AssetDatabase.GetAssetPath(avatarMetadataSetting.avatarMetadata);
                 if (EditorUtility.DisplayDialog("メタデータ削除の確認",
                                                 $"アバター '{_currentTargetAvatar.name}' のメタデータファイルを削除しますか？\n({path})\nこの操作は取り消せません。",
                                                 "削除", "キャンセル"))
@@ -228,7 +219,7 @@ namespace MitarashiDango.AvatarCatalog
                     bool deleted = AvatarMetadataUtil.DeleteMetadata(_currentTargetAvatar);
                     if (deleted)
                     {
-                        _currentMetadata = null;
+                        UnloadMetadata();
 
                         var avatarCatalogDatabase = AvatarCatalogDatabase.Load();
                         if (avatarCatalogDatabase != null && avatarCatalogDatabase.IsExists(_currentTargetAvatar))
@@ -243,8 +234,6 @@ namespace MitarashiDango.AvatarCatalog
                                 DatabaseBuilder.RefreshIndexes(globalObjectId);
                             }
                         }
-
-                        PopulateUIWithMetadata();
                     }
                     else
                     {
@@ -255,71 +244,33 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
+        private void UnloadMetadata()
+        {
+            rootVisualElement.Unbind();
+            _serializedObject = null;
+        }
+
+        private void SetMetadata(AvatarMetadata avatarMetadata)
+        {
+            rootVisualElement.Unbind();
+            if (avatarMetadata != null)
+            {
+                _serializedObject = new SerializedObject(avatarMetadata);
+                rootVisualElement.Bind(_serializedObject);
+            }
+        }
+
         private void LoadMetadataForCurrentAvatar()
         {
-            _currentMetadata = null;
+            UnloadMetadata();
+
             if (_currentTargetAvatar != null)
             {
-                _currentMetadata = AvatarMetadataUtil.LoadMetadata(_currentTargetAvatar);
-            }
-
-            PopulateUIWithMetadata();
-        }
-
-        private void PopulateUIWithMetadata()
-        {
-            if (_currentMetadata != null)
-            {
-                _commentField.SetValueWithoutNotify(_currentMetadata.comment);
-
-                _tagsContainer.Clear();
-                for (int i = 0; i < _currentMetadata.tags.Count; i++)
+                var avatarMetadata = AvatarMetadataUtil.LoadMetadata(_currentTargetAvatar);
+                if (avatarMetadata != null)
                 {
-                    CreateTagField(_currentMetadata.tags[i], i);
+                    SetMetadata(avatarMetadata);
                 }
-            }
-            else
-            {
-                _commentField.SetValueWithoutNotify("");
-                _tagsContainer.Clear();
-            }
-        }
-
-        private void CreateTagField(string tagValue, int index)
-        {
-            var tagRow = new VisualElement();
-            tagRow.AddToClassList("tag-row");
-
-            var tagField = new TextField();
-            tagField.value = tagValue;
-            tagField.AddToClassList("tag-field");
-            tagField.RegisterValueChangedCallback(evt => OnTagChanged(evt, index));
-            tagRow.Add(tagField);
-
-            var deleteButton = new Button(() => DeleteTag(index));
-            deleteButton.text = "x";
-            deleteButton.AddToClassList("tag-delete-button");
-            tagRow.Add(deleteButton);
-
-            _tagsContainer.Add(tagRow);
-        }
-
-        private void OnTagChanged(ChangeEvent<string> evt, int index)
-        {
-            if (_currentMetadata != null)
-            {
-                _currentMetadata.tags[index] = evt.newValue;
-                MarkDirty();
-            }
-        }
-
-        private void DeleteTag(int index)
-        {
-            if (_currentMetadata != null && index < _currentMetadata.tags.Count)
-            {
-                _currentMetadata.tags.RemoveAt(index);
-                PopulateUIWithMetadata();
-                MarkDirty();
             }
         }
 
@@ -332,7 +283,7 @@ namespace MitarashiDango.AvatarCatalog
 
             bool avatarSelected = _currentTargetAvatar != null;
             bool hasDescriptor = avatarSelected && _currentTargetAvatar.GetComponent<VRCAvatarDescriptor>() != null;
-            bool metadataExists = _currentMetadata != null;
+            bool metadataExists = _serializedObject != null;
 
             if (avatarSelected && !hasDescriptor)
             {
@@ -364,24 +315,6 @@ namespace MitarashiDango.AvatarCatalog
             bool canDelete = metadataExists;
             _deleteMetadataButton.style.display = canDelete ? DisplayStyle.Flex : DisplayStyle.None;
             _deleteMetadataButton.SetEnabled(canDelete);
-        }
-
-        private void MarkDirty()
-        {
-            if (_currentMetadata != null)
-            {
-                EditorUtility.SetDirty(_currentMetadata);
-            }
-        }
-
-        private void OnDestroy()
-        {
-            EditorSceneManager.sceneOpened -= OnSceneOpened;
-            if (_currentMetadata != null && EditorUtility.IsDirty(_currentMetadata))
-            {
-                Debug.Log("Saving metadata on window close...");
-                AssetDatabase.SaveAssets(); // 閉じる際には確実に保存
-            }
         }
 
         private void ShowHelpBoxMessage(string message, HelpBoxMessageType type)
