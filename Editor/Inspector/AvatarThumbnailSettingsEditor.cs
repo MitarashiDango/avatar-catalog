@@ -86,7 +86,7 @@ namespace MitarashiDango.AvatarCatalog
         private void SetupCameraPositionOffsetField(VisualElement root)
         {
             var cameraPositionOffsetField = root.Q<Vector3Field>(CameraPositionOffsetFieldName);
-            if (cameraPositionOffsetField != null)
+            if (cameraPositionOffsetField == null)
             {
                 Debug.LogWarning($"{CameraPositionOffsetFieldName} not found in UXML.");
                 return;
