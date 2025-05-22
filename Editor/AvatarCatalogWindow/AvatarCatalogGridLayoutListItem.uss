@@ -9,8 +9,8 @@
 }
 
 .avatar-name-label {
-  margin-top: 5;
-  font-size: 11;
+  margin-top: 5px;
+  font-size: 11px;
   -unity-text-align: middle-center;
   white-space: nowrap;
   overflow: hidden;

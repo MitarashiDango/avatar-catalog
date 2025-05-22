@@ -5,20 +5,20 @@
 }
 
 #preview-target-avatar-object {
-    height: 24;
+    height: 24px;
     flex-grow: 1;
     flex-shrink: 1;
-    font-size: 16;
+    font-size: 16px;
 }
 
 #refresh-button {
-    height: 24;
+    height: 24px;
     flex-grow: 0;
     flex-shrink: 0;
-    padding-bottom: 3;
-    padding-left: 3;
-    padding-right: 3;
-    padding-top: 3;
+    padding-bottom: 3px;
+    padding-left: 3px;
+    padding-right: 3px;
+    padding-top: 3px;
 }
 
 #refresh-button-icon-image {
