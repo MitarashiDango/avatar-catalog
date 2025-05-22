@@ -13,22 +13,17 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarCatalogWindow : EditorWindow
     {
+        private static readonly string _mainUxmlGuid = "486221a5f5fdd0b4cbc5ccc22397d354";
+        private static readonly string _gridLayoutListItemUxmlGuid = "74e74187aebb7f6469bfc215a2ec332d";
+        private static readonly string _gridLayoutListRowContainerUxmlGuid = "41211d8814f507c4bae94f406711e600";
+
         private static readonly int MinColumnSpacing = 10;
         private static readonly char[] SearchWordsDelimiterChars = { ' ' };
 
-        private VisualElement _avatarCatalogView;
-        private VisualElement _avatarCatalogInitialSetupView;
+        private VisualElement _avatarListView;
+        private VisualElement _initialSetupView;
 
-        [SerializeField]
-        private VisualTreeAsset _avatarCatalogViewAsset;
-
-        [SerializeField]
-        private VisualTreeAsset _avatarCatalogInitialSetupViewAsset;
-
-        [SerializeField]
-        private VisualTreeAsset _avatarCatalogGridLayoutListItemAsset;
-
-        [SerializeField]
+        private VisualTreeAsset _gridLayoutListItemAsset;
         private VisualTreeAsset _gridLayoutListRowContainerAsset;
 
         private string _searchText = "";
@@ -67,7 +62,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
             {
-                Debug.LogWarning("failed to try parse avatar GlobalObjectId");
+                Debug.LogError("failed to try parse avatar GlobalObjectId");
                 return null;
             }
 
@@ -77,7 +72,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 if (!EditorSceneManager.SaveOpenScenes())
                 {
-                    Debug.Log("failed to save open scene");
+                    Debug.LogError("failed to save open scene");
                     return null;
                 }
 
@@ -87,7 +82,7 @@ namespace MitarashiDango.AvatarCatalog
             var targetAvatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
             if (targetAvatarObject == null)
             {
-                Debug.Log("failed to find avatar object");
+                Debug.LogError("failed to find avatar object");
                 return null;
             }
 
@@ -129,27 +124,49 @@ namespace MitarashiDango.AvatarCatalog
                 FontCache.ApplyFont(rootVisualElement, fontAsset);
             }
 
-            _avatarCatalogView = _avatarCatalogViewAsset.CloneTree();
-            root.Add(_avatarCatalogView);
-
-            _avatarCatalogInitialSetupView = _avatarCatalogInitialSetupViewAsset.CloneTree();
-            root.Add(_avatarCatalogInitialSetupView);
-
-            SetupAvatarCatalogInitialSetupView();
-            SetupAvatarCatalogView();
-
-            // とりあえず AvatarCatalogDatabase の実体ファイルの有無で判定する
-            if (AvatarCatalogDatabase.IsDatabaseFileExists())
+            if (!LoadUxmlAssets())
             {
-                ShowAvatarCatalogView();
+                return;
             }
-            else
-            {
-                ShowAvatarCatalogInitialSetupView();
-            }
+
+            _avatarListView = root.Q<VisualElement>("avatar-list-view");
+            _initialSetupView = root.Q<VisualElement>("initial-setup-view");
+
+            SetupInitialSetupView();
+            SetupAvatarListView();
+
+            UpdateViews();
 
             EditorSceneManager.sceneOpened -= OnSceneOpened;
             EditorSceneManager.sceneOpened += OnSceneOpened;
+        }
+
+        private bool LoadUxmlAssets()
+        {
+            var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(_mainUxmlGuid);
+            if (mainUxmlAsset == null)
+            {
+                Debug.LogError($"Cannot load UXML file: {_mainUxmlGuid}");
+                return false;
+            }
+
+            _gridLayoutListItemAsset = MiscUtil.LoadVisualTreeAsset(_gridLayoutListItemUxmlGuid);
+            if (_gridLayoutListItemAsset == null)
+            {
+                Debug.LogError($"Cannot load UXML file: {_gridLayoutListItemUxmlGuid}");
+                return false;
+            }
+
+            _gridLayoutListRowContainerAsset = MiscUtil.LoadVisualTreeAsset(_gridLayoutListRowContainerUxmlGuid);
+            if (_gridLayoutListRowContainerAsset == null)
+            {
+                Debug.LogError($"Cannot load UXML file: {_gridLayoutListRowContainerUxmlGuid}");
+                return false;
+            }
+
+            mainUxmlAsset.CloneTree(rootVisualElement);
+
+            return true;
         }
 
         private void OnSceneOpened(Scene scene, OpenSceneMode mode)
@@ -162,40 +179,40 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void ShowAvatarCatalogInitialSetupView()
+        private void ShowInitialSetupView()
         {
-            if (_avatarCatalogView == null && _avatarCatalogInitialSetupView == null)
+            if (_avatarListView == null && _initialSetupView == null)
             {
                 return;
             }
 
-            _avatarCatalogView.style.display = DisplayStyle.None;
-            _avatarCatalogInitialSetupView.style.display = DisplayStyle.Flex;
+            _avatarListView.style.display = DisplayStyle.None;
+            _initialSetupView.style.display = DisplayStyle.Flex;
         }
 
-        private void SetupAvatarCatalogInitialSetupView()
+        private void SetupInitialSetupView()
         {
-            var root = _avatarCatalogInitialSetupView;
+            var root = _initialSetupView;
             var button = root.Q<Button>("run-initial-setup-button");
             button.RegisterCallback<ClickEvent>(e => OnRunInitialSetupButtonClick());
         }
 
-        private void SetupAvatarCatalogView()
+        private void SetupAvatarListView()
         {
-            var root = _avatarCatalogView;
+            var root = _avatarListView;
 
-            var avatarCatalogHeader = root.Q<Toolbar>("avatar-catalog-header");
-            var avatarCatalogFooter = root.Q<VisualElement>("avatar-catalog-footer");
+            var header = root.Q<Toolbar>("avatar-list-view-header");
+            var footer = root.Q<VisualElement>("avatar-list-view-footer");
 
-            var searchTextField = avatarCatalogHeader.Q<ToolbarSearchField>("search-text-field");
+            var searchTextField = header.Q<ToolbarSearchField>("search-text-field");
             searchTextField.value = _searchText;
             searchTextField.RegisterValueChangedCallback(e => OnSearchTextFieldValueChanged(e));
 
-            var reloadAvatarCatalogMenu = avatarCatalogHeader.Q<ToolbarMenu>("reload-avatar-catalog-menu");
+            var reloadAvatarCatalogMenu = header.Q<ToolbarMenu>("reload-avatar-catalog-menu");
             reloadAvatarCatalogMenu.menu.AppendAction("アバター一覧を更新", action => ReloadAvatarList());
             reloadAvatarCatalogMenu.menu.AppendAction("アバター一覧を更新（サムネイル画像再生成あり）", action => ReloadAvatarList(true));
 
-            var resizeGridItemSlider = avatarCatalogFooter.Q<Slider>("resize-grid-item-slider");
+            var resizeGridItemSlider = footer.Q<Slider>("resize-grid-item-slider");
             resizeGridItemSlider.value = _gridItemSize;
             resizeGridItemSlider.RegisterValueChangedCallback((e) => OnResizeGridItemSliderValueChanged(e));
             resizeGridItemSlider.RegisterCallback<PointerCaptureOutEvent>(e => OnResizeGridItemSliderPointerCaptureOut(e));
@@ -204,20 +221,20 @@ namespace MitarashiDango.AvatarCatalog
             root.RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
         }
 
-        private void ShowAvatarCatalogView()
+        private void ShowAvatarListView()
         {
-            if (_avatarCatalogView == null && _avatarCatalogInitialSetupView == null)
+            if (_avatarListView == null && _initialSetupView == null)
             {
                 return;
             }
 
-            _avatarCatalogView.style.display = DisplayStyle.Flex;
-            _avatarCatalogInitialSetupView.style.display = DisplayStyle.None;
+            _avatarListView.style.display = DisplayStyle.Flex;
+            _initialSetupView.style.display = DisplayStyle.None;
         }
 
         private void UpdateGridLayout()
         {
-            var gridContainer = _avatarCatalogView.Q<VisualElement>("avatar-catalog-grid-view").Q<VisualElement>("items-container");
+            var gridContainer = _avatarListView.Q<VisualElement>("avatar-list-scroll-view").Q<VisualElement>("items-container");
 
             gridContainer.Clear();
 
@@ -259,7 +276,7 @@ namespace MitarashiDango.AvatarCatalog
                 {
                     var currentAvatar = avatars[i];
 
-                    var gridLayoutItem = _avatarCatalogGridLayoutListItemAsset.CloneTree();
+                    var gridLayoutItem = _gridLayoutListItemAsset.CloneTree();
                     gridLayoutItem.style.height = _gridItemSize;
                     gridLayoutItem.style.width = _gridItemSize;
 
@@ -387,7 +404,7 @@ namespace MitarashiDango.AvatarCatalog
 
                 if (!EditorSceneManager.SaveOpenScenes())
                 {
-                    Debug.Log("failed to save open scene");
+                    Debug.LogError("failed to save open scene");
                     return;
                 }
 
@@ -397,7 +414,7 @@ namespace MitarashiDango.AvatarCatalog
             if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
             {
                 EditorSceneManager.OpenScene(currentScenePath);
-                Debug.LogWarning("Failed to parse GlobalObjectId");
+                Debug.LogError("Failed to parse GlobalObjectId");
                 return;
             }
 
@@ -406,7 +423,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 EditorSceneManager.OpenScene(currentScenePath);
                 EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' が見つかりませんでした。", "OK");
-                Debug.Log("failed to find avatar object");
+                Debug.LogError("failed to find avatar object");
                 return;
             }
 
@@ -520,7 +537,7 @@ namespace MitarashiDango.AvatarCatalog
                 {
                     if (!EditorSceneManager.SaveOpenScenes())
                     {
-                        Debug.Log("failed to save open scene");
+                        Debug.LogError("failed to save open scene");
                         return;
                     }
 
@@ -529,14 +546,14 @@ namespace MitarashiDango.AvatarCatalog
 
                 if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
                 {
-                    Debug.LogWarning("Failed to parse GlobalObjectId");
+                    Debug.LogError("Failed to parse GlobalObjectId");
                     return;
                 }
 
                 var avatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
                 if (avatarObject == null)
                 {
-                    Debug.Log("failed to find avatar object");
+                    Debug.LogError("failed to find avatar object");
                     return;
                 }
 
@@ -567,16 +584,21 @@ namespace MitarashiDango.AvatarCatalog
             _avatarSearchIndex = AvatarSearchIndex.Load();
 
             UpdateGridLayout();
+            UpdateViews();
+        }
 
-            // とりあえず AvatarCatalogDatabase の実体ファイルの有無で判定する
+        private void UpdateViews()
+        {
             if (AvatarCatalogDatabase.IsDatabaseFileExists())
             {
-                ShowAvatarCatalogView();
+                ShowAvatarListView();
+                return;
             }
-            else
-            {
-                ShowAvatarCatalogInitialSetupView();
-            }
+
+            var gridContainer = _avatarListView.Q<VisualElement>("avatar-list-scroll-view").Q<VisualElement>("items-container");
+            gridContainer.Clear();
+
+            ShowInitialSetupView();
         }
 
         private void OnSearchTextFieldValueChanged(ChangeEvent<string> e)
@@ -597,16 +619,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             BuildAvatarCatalogs();
             UpdateGridLayout();
-
-            // とりあえず AvatarCatalogDatabase の実体ファイルの有無で判定する
-            if (AvatarCatalogDatabase.IsDatabaseFileExists())
-            {
-                ShowAvatarCatalogView();
-            }
-            else
-            {
-                ShowAvatarCatalogInitialSetupView();
-            }
+            UpdateViews();
         }
 
         private void OnResizeGridItemSliderValueChanged(ChangeEvent<float> e)
