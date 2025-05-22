@@ -11,13 +11,12 @@ namespace MitarashiDango.AvatarCatalog
     [CustomEditor(typeof(AvatarThumbnailSettings))]
     public class AvatarThumbnailSettingsEditor : Editor
     {
+        private static readonly string _mainUxmlGuid = "a565f57d4a0204d42a2b27c3289d19a3";
+
         // UXML要素のクエリ名定義
         private const string CameraPositionOffsetFieldName = "camera-position-offset-field";
         private const string CameraRotationFieldName = "camera-rotation-field";
         private const string ShowThumbnailPreviewWindowButtonName = "show-thumbnail-preview-window-button";
-
-        [SerializeField]
-        private VisualTreeAsset _mainUxmlAsset;
 
         private Vector3Field _cameraRotationField;
         private SerializedProperty _cameraPositionOffset;
@@ -49,12 +48,13 @@ namespace MitarashiDango.AvatarCatalog
 
         public override VisualElement CreateInspectorGUI()
         {
-            if (_mainUxmlAsset == null)
+            var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(_mainUxmlGuid);
+            if (mainUxmlAsset == null)
             {
-                return new Label("Main UXML Asset is not assigned.");
+                return new Label($"Cannot load UXML file");
             }
 
-            var root = _mainUxmlAsset.CloneTree();
+            var root = mainUxmlAsset.CloneTree();
 
             ApplyCustomFont(root);
             SetupCameraPositionOffsetField(root);

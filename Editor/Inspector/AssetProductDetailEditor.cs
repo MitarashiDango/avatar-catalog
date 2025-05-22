@@ -16,8 +16,7 @@ namespace MitarashiDango.AvatarCatalog
     [CustomEditor(typeof(AssetProductDetail))]
     public class AssetProductDetailEditor : Editor
     {
-        [SerializeField]
-        private VisualTreeAsset _mainUxmlAsset;
+        private static readonly string _mainUxmlGuid = "3a17e01bd8539ec4a8c1b725283e7e16";
 
         private TextField _productUrlField;
 
@@ -36,12 +35,13 @@ namespace MitarashiDango.AvatarCatalog
 
         public override VisualElement CreateInspectorGUI()
         {
-            if (_mainUxmlAsset == null)
+            var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(_mainUxmlGuid);
+            if (mainUxmlAsset == null)
             {
-                return new Label("Main UXML Asset is not assigned.");
+                return new Label($"Cannot load UXML file");
             }
 
-            var root = _mainUxmlAsset.CloneTree();
+            var root = mainUxmlAsset.CloneTree();
 
             ApplyCustomFont(root);
 
