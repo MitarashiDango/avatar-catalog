@@ -4,8 +4,6 @@ MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
-  - _mainUxmlAsset: {fileID: 9197481963319205126, guid: a565f57d4a0204d42a2b27c3289d19a3,
-      type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

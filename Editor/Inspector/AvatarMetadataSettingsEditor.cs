@@ -10,8 +10,7 @@ namespace MitarashiDango.AvatarCatalog
     [CustomEditor(typeof(AvatarMetadataSettings))]
     public class AvatarMetadataSettingsEditor : Editor
     {
-        [SerializeField]
-        private VisualTreeAsset _mainUxmlAsset;
+        private static readonly string _mainUxmlGuid = "d66338f5f30a861429ec54f2a9272fae";
 
         public void OnEnable()
         {
@@ -28,12 +27,13 @@ namespace MitarashiDango.AvatarCatalog
 
         public override VisualElement CreateInspectorGUI()
         {
-            if (_mainUxmlAsset == null)
+            var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(_mainUxmlGuid);
+            if (mainUxmlAsset == null)
             {
-                return new Label("Main UXML Asset is not assigned.");
+                return new Label($"Cannot load UXML file");
             }
 
-            var root = _mainUxmlAsset.CloneTree();
+            var root = mainUxmlAsset.CloneTree();
 
             ApplyCustomFont(root);
 
