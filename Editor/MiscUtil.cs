@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 
 namespace MitarashiDango.AvatarCatalog
 {
@@ -36,6 +37,27 @@ namespace MitarashiDango.AvatarCatalog
                     EditorSceneManager.CloseScene(scene, true);
                 }
             }
+        }
+
+        public static VisualTreeAsset LoadVisualTreeAsset(string guid)
+        {
+            if (GUID.TryParse(guid, out var parsedGuid))
+            {
+                return LoadVisualTreeAsset(parsedGuid);
+            }
+
+            return null;
+        }
+
+        public static VisualTreeAsset LoadVisualTreeAsset(GUID guid)
+        {
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (string.IsNullOrEmpty(path))
+            {
+                return null;
+            }
+
+            return AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(path);
         }
     }
 }

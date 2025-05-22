@@ -10,8 +10,7 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarThumbnailPreviewWindow : EditorWindow
     {
-        [SerializeField]
-        private VisualTreeAsset _previewAvatarThumbnailAsset;
+        private static readonly string _mainUxmlGuid = "1171fa6381d630845a36a5e82ec47f61";
 
         private ObjectField _avatarDescriptorObjectField;
 
@@ -79,7 +78,14 @@ namespace MitarashiDango.AvatarCatalog
         {
             var root = rootVisualElement;
 
-            var previewAvatarThumbnailRoot = _previewAvatarThumbnailAsset.CloneTree();
+            var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(_mainUxmlGuid);
+            if (mainUxmlAsset == null)
+            {
+                Debug.LogError($"Cannot load UXML file");
+                return;
+            }
+
+            var previewAvatarThumbnailRoot = mainUxmlAsset.CloneTree();
 
             _avatarDescriptorObjectField = previewAvatarThumbnailRoot.Q<ObjectField>("preview-target-avatar-object");
             _avatarDescriptorObjectField.RegisterValueChangedCallback(OnAvatarDescriptorObjectFieldValueChanged);

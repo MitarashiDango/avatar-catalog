@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarCatalogWindow/AvatarListView.uss?fileID=7433441132597879392&amp;guid=f22464d79547e7f499a0a1a485b5ec61&amp;type=3#AvatarListView" />
+    <uie:Toolbar name="avatar-list-view-header">
+        <uie:ToolbarSearchField name="search-text-field" />
+        <uie:ToolbarMenu name="reload-avatar-catalog-menu" text="Menu" />
+    </uie:Toolbar>
+    <ui:ScrollView name="avatar-list-scroll-view">
+        <ui:VisualElement name="items-container" />
+    </ui:ScrollView>
+    <ui:VisualElement name="avatar-list-view-footer">
+        <ui:Slider name="resize-grid-item-slider" high-value="256" low-value="128" />
+    </ui:VisualElement>
+</ui:UXML>

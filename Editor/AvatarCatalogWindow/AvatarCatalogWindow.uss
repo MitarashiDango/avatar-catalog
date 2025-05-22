@@ -1,0 +1,16 @@
+:root {
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+.view {
+    flex-grow: 1;
+}
+
+#initial-setup-view {
+    display: visible;
+}
+
+#avatar-catalog-view {
+    display: none;
+}

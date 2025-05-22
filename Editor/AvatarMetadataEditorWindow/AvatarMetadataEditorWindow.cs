@@ -51,7 +51,7 @@ namespace MitarashiDango.AvatarCatalog
 
         public void CreateGUI()
         {
-            var mainUxmlAsset = LoadMainUxmlAsset();
+            var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(_mainUxmlGuid);
             if (mainUxmlAsset == null)
             {
                 Debug.LogError($"Cannot load UXML file");
@@ -91,17 +91,6 @@ namespace MitarashiDango.AvatarCatalog
 
             EditorSceneManager.sceneOpened -= OnSceneOpened;
             EditorSceneManager.sceneOpened += OnSceneOpened;
-        }
-
-        private VisualTreeAsset LoadMainUxmlAsset()
-        {
-            var path = AssetDatabase.GUIDToAssetPath(_mainUxmlGuid);
-            if (string.IsNullOrEmpty(path))
-            {
-                return null;
-            }
-
-            return AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(path);
         }
 
         private void OnSceneOpened(Scene scene, OpenSceneMode mode)

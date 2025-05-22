@@ -5,14 +5,6 @@ MonoImporter:
   serializedVersion: 2
   defaultReferences:
   - m_ViewDataDictionary: {instanceID: 0}
-  - _avatarCatalogViewAsset: {fileID: 9197481963319205126, guid: 8efa11390d084f14e8a4adeefdca0178,
-      type: 3}
-  - _avatarCatalogInitialSetupViewAsset: {fileID: 9197481963319205126, guid: 3b9fbdccf9a03aa40ac177496efce9a8,
-      type: 3}
-  - _avatarCatalogGridLayoutListItemAsset: {fileID: 9197481963319205126, guid: 74e74187aebb7f6469bfc215a2ec332d,
-      type: 3}
-  - _gridLayoutListRowContainerAsset: {fileID: 9197481963319205126, guid: 41211d8814f507c4bae94f406711e600,
-      type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

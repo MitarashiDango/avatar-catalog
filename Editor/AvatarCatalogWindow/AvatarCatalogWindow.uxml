@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:Template name="AvatarCatalogInitialSetupView" src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarCatalogWindow/AvatarCatalogInitialSetupView.uxml?fileID=9197481963319205126&amp;guid=3b9fbdccf9a03aa40ac177496efce9a8&amp;type=3#AvatarCatalogInitialSetupView" />
+    <ui:Template name="AvatarListView" src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarCatalogWindow/AvatarListView.uxml?fileID=9197481963319205126&amp;guid=8efa11390d084f14e8a4adeefdca0178&amp;type=3#AvatarListView" />
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarCatalogWindow/AvatarCatalogWindow.uss?fileID=7433441132597879392&amp;guid=1aa04d7ef06133c4fb387310d1f08092&amp;type=3#AvatarCatalogWindow" />
+    <ui:Instance template="AvatarCatalogInitialSetupView" name="initial-setup-view" class="view" />
+    <ui:Instance template="AvatarListView" name="avatar-list-view" class="view" />
+</ui:UXML>
