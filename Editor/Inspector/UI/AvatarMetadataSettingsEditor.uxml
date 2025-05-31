@@ -1,3 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
     <uie:ObjectField label="Avatar Metadata" name="avatar-metadata" type="MitarashiDango.AvatarCatalog.Runtime.AvatarMetadata, com.matcha-soft.avatar-catalog.runtime" binding-path="avatarMetadata" />
+    <ui:HelpBox name="name-difference-warning-message-helpbox" text="アバターオブジェクト名とアバターメタデータのファイル名が一致していません" message-type="warning" style="display: none" />
+    <ui:Button name="sync-filename-button" text="アバターメタデータのファイル名をアバター名に合わせる" style="display: none" />
+    <ui:Button name="copy-avatar-metadata-file-button" text="アバターメタデータファイルを複製する" style="display: none" />
 </ui:UXML>
