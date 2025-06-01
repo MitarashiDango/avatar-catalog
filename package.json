@@ -1,6 +1,6 @@
 {
   "name": "com.matcha-soft.avatar-catalog",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "displayName": "Avatar Catalog",
   "description": "アバター管理ツール",
   "unity": "2022.3",
