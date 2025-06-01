@@ -6,6 +6,7 @@ using VRC.SDK3.Avatars.Components;
 using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
 using MitarashiDango.AvatarCatalog.Runtime;
+using System.IO;
 
 namespace MitarashiDango.AvatarCatalog
 {
@@ -18,6 +19,9 @@ namespace MitarashiDango.AvatarCatalog
         private Button _createMetadataButton;
         private Button _deleteMetadataButton;
         private HelpBox _statusHelpBox;
+        private HelpBox _nameDifferenceWarningMessageBox;
+        private Button _syncFileNameButton;
+        private Button _copyAvatarMetadataFileButton;
 
         private GameObject _currentTargetAvatar;
         private SerializedObject _serializedObject;
@@ -49,6 +53,27 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
+        public void OnFocus()
+        {
+            var avatarMetadataSettings = _currentTargetAvatar?.GetComponent<AvatarMetadataSettings>();
+            if (avatarMetadataSettings == null || avatarMetadataSettings.avatarMetadata == null)
+            {
+                HideFilenameMismatchUI();
+                return;
+            }
+
+            SetMetadata(avatarMetadataSettings.avatarMetadata);
+
+            if (IsFileNameDifferent())
+            {
+                ShowFilenameMismatchUI();
+            }
+            else
+            {
+                HideFilenameMismatchUI();
+            }
+        }
+
         public void CreateGUI()
         {
             var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(_mainUxmlGuid);
@@ -73,12 +98,17 @@ namespace MitarashiDango.AvatarCatalog
             _createMetadataButton = rootVisualElement.Q<Button>("create-metadata-button");
             _deleteMetadataButton = rootVisualElement.Q<Button>("delete-metadata-button");
             _statusHelpBox = rootVisualElement.Q<HelpBox>("status-helpbox");
+            _nameDifferenceWarningMessageBox = rootVisualElement.Q<HelpBox>("name-difference-warning-message-helpbox");
+            _syncFileNameButton = rootVisualElement.Q<Button>("sync-filename-button");
+            _copyAvatarMetadataFileButton = rootVisualElement.Q<Button>("copy-avatar-metadata-file-button");
 
             // イベントハンドラを登録
             _avatarObjectField.objectType = typeof(GameObject);
             _avatarObjectField.RegisterValueChangedCallback(OnAvatarObjectChanged);
             _createMetadataButton.RegisterCallback<ClickEvent>((e) => OnCreateMetadataButtonClicked());
             _deleteMetadataButton.RegisterCallback<ClickEvent>((e) => OnDeleteMetadataButtonClicked());
+            _syncFileNameButton.RegisterCallback<ClickEvent>(OnSyncFileNameButtonClick);
+            _copyAvatarMetadataFileButton.RegisterCallback<ClickEvent>(OnCopyAvatarMetadataFileButtonClick);
 
             // 初期状態を設定
             if (_currentTargetAvatar != null)
@@ -89,8 +119,153 @@ namespace MitarashiDango.AvatarCatalog
             HideHelpBox();
             UpdateUIState();
 
+            if (IsFileNameDifferent())
+            {
+                ShowFilenameMismatchUI();
+            }
+            else
+            {
+                HideFilenameMismatchUI();
+            }
+
             EditorSceneManager.sceneOpened -= OnSceneOpened;
             EditorSceneManager.sceneOpened += OnSceneOpened;
+        }
+
+        private void ShowFilenameMismatchUI()
+        {
+            _nameDifferenceWarningMessageBox.style.display = DisplayStyle.Flex;
+            _syncFileNameButton.style.display = DisplayStyle.Flex;
+            _copyAvatarMetadataFileButton.style.display = DisplayStyle.Flex;
+        }
+
+        private void HideFilenameMismatchUI()
+        {
+            _nameDifferenceWarningMessageBox.style.display = DisplayStyle.None;
+            _syncFileNameButton.style.display = DisplayStyle.None;
+            _copyAvatarMetadataFileButton.style.display = DisplayStyle.None;
+        }
+
+        private bool IsFileNameDifferent()
+        {
+            if (_serializedObject == null || _currentTargetAvatar == null)
+            {
+                return false;
+            }
+
+            var avatarMetadataSettings = _currentTargetAvatar.GetComponent<AvatarMetadataSettings>();
+            if (avatarMetadataSettings == null)
+            {
+                return false;
+            }
+
+            var filePath = AssetDatabase.GetAssetPath(_serializedObject.targetObject);
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return false;
+            }
+
+            var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath);
+
+            return fileNameWithoutExtension != AvatarMetadataUtil.GenerateFileName(avatarMetadataSettings.gameObject);
+        }
+
+        private void OnSyncFileNameButtonClick(ClickEvent evt)
+        {
+            if (_serializedObject == null)
+            {
+                Debug.LogError("AvatarMetadata is not assigned.");
+                return;
+            }
+
+            var filePath = AssetDatabase.GetAssetPath(_serializedObject.targetObject);
+            if (string.IsNullOrEmpty(filePath))
+            {
+                Debug.LogError("Failed to get the asset path of AvatarMetadata.");
+                return;
+            }
+
+            var objectGuid = AssetDatabase.GUIDFromAssetPath(filePath);
+            if (objectGuid.Empty())
+            {
+                Debug.LogError("The GUID of AvatarMetadata is invalid.");
+                return;
+            }
+
+            var avatarMetadataSettings = _currentTargetAvatar.GetComponent<AvatarMetadataSettings>();
+
+            // 同名のファイルが存在していないかチェックする
+            var newFilePath = AvatarMetadataUtil.GetMetadataPath(AvatarMetadataUtil.GenerateFileName(avatarMetadataSettings.gameObject));
+            if (!AssetDatabase.GUIDFromAssetPath(newFilePath).Empty())
+            {
+                // 存在していたら警告メッセージを出して処理終了
+                Debug.LogWarning($"A file with the same name already exists: {newFilePath}. Sync aborted.");
+                EditorUtility.DisplayDialog("警告", "同名のファイルが既に存在しているため、ファイル名の同期を中止しました。", "OK");
+                return;
+            }
+
+            AvatarMetadataUtil.RenameAvatarMetadataFile(objectGuid, avatarMetadataSettings.gameObject);
+
+            if (IsFileNameDifferent())
+            {
+                ShowFilenameMismatchUI();
+            }
+            else
+            {
+                HideFilenameMismatchUI();
+            }
+        }
+
+        private void OnCopyAvatarMetadataFileButtonClick(ClickEvent evt)
+        {
+            var avatarMetadataSettings = _currentTargetAvatar.GetComponent<AvatarMetadataSettings>();
+
+            // 複製対象のアバターメタデータ
+            if (_serializedObject == null)
+            {
+                Debug.LogError("AvatarMetadata is not assigned.");
+                return;
+            }
+
+            if (!IsFileNameDifferent())
+            {
+                Debug.LogWarning("Filename is matched.");
+                return;
+            }
+
+            var originalPath = AssetDatabase.GetAssetPath(_serializedObject.targetObject);
+            if (string.IsNullOrEmpty(originalPath))
+            {
+                Debug.LogWarning("Original asset path is invalid.");
+                return;
+            }
+
+            // 同名のファイルが存在していないかチェックする
+            var newFilePath = AvatarMetadataUtil.GetMetadataPath(AvatarMetadataUtil.GenerateFileName(avatarMetadataSettings.gameObject));
+            if (!AssetDatabase.GUIDFromAssetPath(newFilePath).Empty())
+            {
+                // 存在していたら警告メッセージを出して処理終了
+                Debug.LogWarning($"A file with the same name already exists: {newFilePath}. Copy aborted.");
+                EditorUtility.DisplayDialog("警告", "同名のファイルが既に存在しているため、ファイルの複製を中止しました。", "OK");
+                return;
+            }
+
+            AssetDatabase.CopyAsset(originalPath, newFilePath);
+            AssetDatabase.Refresh();
+
+            var copiedAsset = AssetDatabase.LoadAssetAtPath<AvatarMetadata>(newFilePath);
+            avatarMetadataSettings.avatarMetadata = copiedAsset;
+
+            _serializedObject.ApplyModifiedProperties();
+
+            if (IsFileNameDifferent())
+            {
+                ShowFilenameMismatchUI();
+            }
+            else
+            {
+                HideFilenameMismatchUI();
+            }
         }
 
         private void OnSceneOpened(Scene scene, OpenSceneMode mode)
@@ -235,6 +410,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             rootVisualElement.Unbind();
             _serializedObject = null;
+            HideFilenameMismatchUI();
         }
 
         private void SetMetadata(AvatarMetadata avatarMetadata)
@@ -244,6 +420,19 @@ namespace MitarashiDango.AvatarCatalog
             {
                 _serializedObject = new SerializedObject(avatarMetadata);
                 rootVisualElement.Bind(_serializedObject);
+
+                if (IsFileNameDifferent())
+                {
+                    ShowFilenameMismatchUI();
+                }
+                else
+                {
+                    HideFilenameMismatchUI();
+                }
+            }
+            else
+            {
+                HideFilenameMismatchUI();
             }
         }
 

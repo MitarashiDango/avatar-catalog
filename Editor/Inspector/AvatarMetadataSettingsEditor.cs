@@ -227,6 +227,15 @@ namespace MitarashiDango.AvatarCatalog
             _avatarMetadataProperty.objectReferenceValue = copiedAsset;
 
             serializedObject.ApplyModifiedProperties();
+
+            if (IsFileNameDifferent(copiedAsset))
+            {
+                ShowFilenameMismatchUI();
+            }
+            else
+            {
+                HideFilenameMismatchUI();
+            }
         }
     }
 }
