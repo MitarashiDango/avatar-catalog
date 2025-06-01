@@ -258,6 +258,8 @@ namespace MitarashiDango.AvatarCatalog
 
             _serializedObject.ApplyModifiedProperties();
 
+            SetMetadata(copiedAsset);
+
             if (IsFileNameDifferent())
             {
                 ShowFilenameMismatchUI();
