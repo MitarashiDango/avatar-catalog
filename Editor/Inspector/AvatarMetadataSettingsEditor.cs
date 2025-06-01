@@ -210,8 +210,15 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
+            // 同名のファイルが存在していないかチェックする
             var newFilePath = AvatarMetadataUtil.GetMetadataPath(AvatarMetadataUtil.GenerateFileName(avatarMetadataSettings.gameObject));
-            newFilePath = AssetDatabase.GenerateUniqueAssetPath(newFilePath);
+            if (!AssetDatabase.GUIDFromAssetPath(newFilePath).Empty())
+            {
+                // 存在していたら警告メッセージを出して処理終了
+                Debug.LogWarning($"A file with the same name already exists: {newFilePath}. Copy aborted.");
+                EditorUtility.DisplayDialog("警告", "同名のファイルが既に存在しているため、ファイルの複製を中止しました。", "OK");
+                return;
+            }
 
             AssetDatabase.CopyAsset(originalPath, newFilePath);
             AssetDatabase.Refresh();
