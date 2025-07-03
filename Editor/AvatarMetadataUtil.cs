@@ -20,36 +20,6 @@ namespace MitarashiDango.AvatarCatalog
         }
 
         /// <summary>
-        /// アバターメタデータのアセットパスを取得します
-        /// </summary>
-        /// <param name="avatarRootObject">対象のアバターオブジェクト</param>
-        /// <returns>アバターメタデータのファイルパスを返却する。</returns>
-        public static string GetMetadataPath(GameObject avatarRootObject)
-        {
-            var fileName = GenerateFileName(avatarRootObject);
-            return $"{FolderUtil.AvatarMetadataFolderPath}/{fileName}.asset";
-        }
-
-        /// <summary>
-        /// GlobalObjectIdからアセットパスを取得します
-        /// </summary>
-        /// <param name="id">対象の GlobalObjectId</param>
-        /// <returns>アバターメタデータのファイルパスを返却する。無効な GlobalObjectId の場合は null を返却する。</returns>
-        private static string GetMetadataPath(GlobalObjectId id)
-        {
-            if (id.Equals(default) && id.identifierType == 0)
-            {
-                Debug.LogWarning("Attempted to get metadata path for an invalid GlobalObjectId.");
-                return null;
-            }
-
-            FolderUtil.CreateUserDataFolder();
-            FolderUtil.CreateAvatarMetadataFolder();
-
-            return $"{FolderUtil.AvatarMetadataFolderPath}/{id.assetGUID}_{id.targetObjectId}_{id.targetPrefabId}.asset";
-        }
-
-        /// <summary>
         /// 指定されたアバターオブジェクトに対応するアバターメタデータをロードします
         /// </summary>
         /// <param name="avatarRootObject">対象のアバターオブジェクト</param>
@@ -92,22 +62,6 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             return AssetDatabase.LoadAssetAtPath<AvatarMetadata>(filePath);
-        }
-
-        /// <summary>
-        /// 指定された GlobalObjectId に対応するアバターメタデータをロードします
-        /// </summary>
-        /// <param name="id">対象のGlobalObjectId</param>
-        /// <returns>ロードされたアバターメタデータを返却する。GlobalObjectId が無効な場合は null を返却する。</returns>
-        private static AvatarMetadata LoadMetadata(GlobalObjectId id)
-        {
-            var path = GetMetadataPath(id);
-            if (string.IsNullOrEmpty(path))
-            {
-                return null;
-            }
-
-            return AssetDatabase.LoadAssetAtPath<AvatarMetadata>(path);
         }
 
         /// <summary>
@@ -157,15 +111,23 @@ namespace MitarashiDango.AvatarCatalog
             newMetadata.comment = "";
             newMetadata.tags = new List<string>();
 
-            metadataPath = GetMetadataPath(avatarRootObject);
+            var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject);
+            newMetadata.avatarGlobalObjectId = avatarGlobalObjectId.ToString();
+
+            metadataPath = AssetDatabase.GenerateUniqueAssetPath(GetMetadataPath($"tmp_{GUID.Generate()}"));
 
             try
             {
                 FolderUtil.CreateUserDataFolder();
                 FolderUtil.CreateAvatarMetadataFolder();
 
-                AssetDatabase.CreateAsset(newMetadata, AssetDatabase.GenerateUniqueAssetPath(metadataPath));
+                AssetDatabase.CreateAsset(newMetadata, metadataPath);
                 AssetDatabase.SaveAssets();
+
+                var fileGuid = AssetDatabase.AssetPathToGUID(metadataPath);
+                AssetDatabase.RenameAsset(metadataPath, fileGuid);
+                metadataPath = AssetDatabase.GUIDToAssetPath(fileGuid);
+
                 AssetDatabase.Refresh();
 
                 if (avatarMetadataSettings == null)
@@ -210,22 +172,6 @@ namespace MitarashiDango.AvatarCatalog
                 metadataPath = AssetDatabase.GetAssetPath(avatarMetadataSettings.avatarMetadata);
             }
 
-            // 旧形式のファイル名となっているアバターメタデータファイルを検索
-            if (metadataPath == "")
-            {
-                GlobalObjectId globalId = GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject);
-                if (globalId.Equals(default))
-                {
-                    return false;
-                }
-
-                metadataPath = GetMetadataPath(globalId);
-                if (string.IsNullOrEmpty(metadataPath))
-                {
-                    return false;
-                }
-            }
-
             // アセットが存在するかどうかで判断
             if (AssetDatabase.LoadAssetAtPath<AvatarMetadata>(metadataPath) == null)
             {
@@ -257,78 +203,45 @@ namespace MitarashiDango.AvatarCatalog
 
         public static bool MigrateAvatarMetadataSettings(GameObject avatarRootObject)
         {
-            var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject);
-
             var avatarMetadataSettings = avatarRootObject.GetComponent<AvatarMetadataSettings>();
             if (avatarMetadataSettings != null)
             {
-                return false;
+                if (avatarMetadataSettings.avatarMetadata == null)
+                {
+                    return false;
+                }
+
+                if (avatarMetadataSettings.avatarMetadata.avatarGlobalObjectId == "")
+                {
+                    var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject);
+                    avatarMetadataSettings.avatarMetadata.avatarGlobalObjectId = avatarGlobalObjectId.ToString();
+
+                    EditorUtility.SetDirty(avatarMetadataSettings.avatarMetadata);
+                }
+
+                RenameToGuid(avatarMetadataSettings.avatarMetadata);
             }
-
-            var avatarMetadata = LoadMetadata(avatarGlobalObjectId);
-            if (avatarMetadata == null)
-            {
-                return false;
-            }
-
-            avatarMetadataSettings = avatarRootObject.AddComponent<AvatarMetadataSettings>();
-            avatarMetadataSettings.avatarMetadata = avatarMetadata;
-            EditorUtility.SetDirty(avatarMetadataSettings);
-
-            var filePath = AssetDatabase.GetAssetPath(avatarMetadata);
-            if (string.IsNullOrEmpty(filePath))
-            {
-                return true;
-            }
-
-            RenameAvatarMetadataFile(filePath, GenerateFileName(avatarRootObject));
 
             return true;
         }
 
-        /// <summary>
-        /// アバターメタデータファイルを現在のアバター名およびシーン名に合わせてリネームする
-        /// </summary>
-        /// <param name="fileGUID">リネーム対象ファイルのGUID</param>
-        /// <param name="avatarRootObject">アバターオブジェクト</param>
-        /// <returns>リネーム後のファイルパス</returns>
-        public static string RenameAvatarMetadataFile(GUID fileGUID, GameObject avatarRootObject)
+        public static void RenameToGuid(AvatarMetadata avatarMetadata)
         {
-            var fileName = GenerateFileName(avatarRootObject);
-            return RenameAvatarMetadataFile(fileGUID, fileName);
-        }
-
-        /// <summary>
-        /// アバターメタデータファイルをリネームする
-        /// </summary>
-        /// <param name="fileGUID">リネーム対象ファイルのGUID</param>
-        /// <param name="newFileNameWithoutExtension">リネーム後の名前（拡張子なし）</param>
-        /// <returns>リネーム後のファイルパス</returns>
-        public static string RenameAvatarMetadataFile(GUID fileGUID, string newFileNameWithoutExtension)
-        {
-            var filePath = AssetDatabase.GUIDToAssetPath(fileGUID);
+            var filePath = AssetDatabase.GetAssetPath(avatarMetadata);
             if (string.IsNullOrEmpty(filePath))
             {
-                return filePath;
+                return;
             }
 
-            return RenameAvatarMetadataFile(filePath, newFileNameWithoutExtension);
-        }
+            var fileGuid = AssetDatabase.AssetPathToGUID(filePath);
 
-        public static string RenameAvatarMetadataFile(string filePath, string newFileNameWithoutExtension)
-        {
             // ファイル名が変更されていない場合、何も行わない
-            if (Path.GetFileNameWithoutExtension(filePath) == newFileNameWithoutExtension)
+            if (Path.GetFileNameWithoutExtension(filePath) == fileGuid)
             {
-                return filePath;
+                return;
             }
 
-            return AssetDatabase.RenameAsset(filePath, newFileNameWithoutExtension);
-        }
-
-        public static string GenerateFileName(GameObject avatarRootObject)
-        {
-            return $"{avatarRootObject.scene.name}_{avatarRootObject.name}";
+            AssetDatabase.RenameAsset(filePath, fileGuid);
         }
     }
 }

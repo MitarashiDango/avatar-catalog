@@ -7,6 +7,11 @@ namespace MitarashiDango.AvatarCatalog.Runtime
     public class AvatarMetadata : ScriptableObject
     {
         /// <summary>
+        /// メタデータが紐付いているアバターオブジェクトのグローバルオブジェクトID
+        /// </summary>
+        public string avatarGlobalObjectId = "";
+
+        /// <summary>
         /// コメント
         /// </summary>
         public string comment = "";
