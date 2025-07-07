@@ -1,5 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
     <ui:Vector3Field label="カメラ座標オフセット" name="camera-position-offset-field" />
     <ui:Vector3Field label="カメラ角度" name="camera-rotation-field" />
+    <ui:Button text="値の再読み込み" name="refresh-field-values" />
     <ui:Button text="サムネイル画像をプレビュー" parse-escape-sequences="true" display-tooltip-when-elided="true" name="show-thumbnail-preview-window-button" />
 </ui:UXML>
