@@ -11,8 +11,8 @@
                     <ui:Button name="delete-metadata-button" text="メタデータ削除" />
                 </ui:VisualElement>
             </ui:VisualElement>
-            <ui:HelpBox name="name-difference-warning-message-helpbox" text="アバターオブジェクト名とアバターメタデータのファイル名が一致していません" message-type="warning" style="display: none" />
-            <ui:Button name="sync-filename-button" text="アバターメタデータのファイル名をアバター名に合わせる" style="display: none" />
+            <ui:HelpBox name="warning-message-helpbox" text="このアバターメタデータは別のアバターオブジェクトに設定されている可能性があります" message-type="warning" style="display: none" />
+            <ui:Button name="sync-avatar-global-id-button" text="アバターメタデータを編集対象のアバターオブジェクトへ紐付ける" style="display: none" />
             <ui:Button name="copy-avatar-metadata-file-button" text="アバターメタデータファイルを複製する" style="display: none" />
         </ui:VisualElement>
     </ui:VisualElement>
