@@ -16,6 +16,7 @@ namespace MitarashiDango.AvatarCatalog
         // UXML要素のクエリ名定義
         private const string CameraPositionOffsetFieldName = "camera-position-offset-field";
         private const string CameraRotationFieldName = "camera-rotation-field";
+        private const string RefreshFieldValuesButtonName = "refresh-field-values";
         private const string ShowThumbnailPreviewWindowButtonName = "show-thumbnail-preview-window-button";
 
         private Vector3Field _cameraRotationField;
@@ -59,6 +60,7 @@ namespace MitarashiDango.AvatarCatalog
             ApplyCustomFont(root);
             SetupCameraPositionOffsetField(root);
             SetupCameraRotationField(root);
+            SetupRefreshFieldValuesButton(root);
             SetupShowThumbnailPreviewWindowButton(root);
 
             return root;
@@ -122,6 +124,18 @@ namespace MitarashiDango.AvatarCatalog
             _cameraRotationField.RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
         }
 
+        private void SetupRefreshFieldValuesButton(VisualElement root)
+        {
+            var refreshFieldValuesButton = root.Q<Button>(RefreshFieldValuesButtonName);
+            if (refreshFieldValuesButton == null)
+            {
+                Debug.LogWarning($"{RefreshFieldValuesButtonName} not found in UXML.");
+                return;
+            }
+
+            refreshFieldValuesButton.clicked += OnRefreshFieldValuesButtonClick;
+        }
+
         /// <summary>
         /// サムネイルプレビューウィンドウ表示ボタンを設定します
         /// </summary>
@@ -141,6 +155,14 @@ namespace MitarashiDango.AvatarCatalog
         {
             // シーンが変更された際にインスペクターを再描画する
             Repaint();
+        }
+
+        private void OnRefreshFieldValuesButtonClick()
+        {
+            if (_cameraRotationField != null && _cameraRotation != null)
+            {
+                _cameraRotationField.value = _cameraRotation.quaternionValue.eulerAngles;
+            }
         }
 
         private void OnShowThumbnailPreviewWindowButtonClick()
