@@ -25,6 +25,13 @@ Unity Editor 上で VRChat 向けにセットアップされたアバターデ�
 
 ## 使い方は？
 
+## VPM リポジトリー経由で導入する方法
+
+1. VPM リポジトリー ([https://vpm.matcha-soft.com/repos.json](https://vpm.matcha-soft.com/repos.json)) を VCC へ登録する
+2. 「Avatar Catalog」をプロジェクトへ追加する
+
+## Unity Package を用いて導入する方法
+
 1. リリース一覧より最新の unitypackage ファイルをダウンロードする
 2. ダウンロードしたファイルを Unity へドラッグ＆ドロップし、インポートする
 3. ウィンドウメニューの項目を `Tools > Avatar Catalog > Avatar List` の順にクリックし、アバターリストを開く
