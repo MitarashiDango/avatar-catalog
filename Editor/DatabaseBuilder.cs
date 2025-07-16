@@ -12,8 +12,8 @@ namespace MitarashiDango.AvatarCatalog
         /// <summary>
         /// アバターカタログデータベースと各種インデックスを構築する
         /// </summary>
-        /// <param name="withRefreshThumbnail">更新時にサムネイル画像も新しくするか</param>
-        public static void BuildAvatarCatalogDatabaseAndIndexes(bool withRefreshThumbnail = false)
+        /// <param name="withRegenerateThumbnails">更新時にサムネイル画像も新しくするか</param>
+        public static void BuildAvatarCatalogDatabaseAndIndexes(bool withRegenerateThumbnails = false)
         {
             // フォルダー作成
             FolderUtil.CreateUserDataFolders();
@@ -80,7 +80,7 @@ namespace MitarashiDango.AvatarCatalog
                             // 既存のアバターサムネイル画像に対する処理
                             if (GUID.TryParse(avatar.thumbnailImageGuid, out var thumbnailImageGuid))
                             {
-                                if (withRefreshThumbnail)
+                                if (withRegenerateThumbnails)
                                 {
                                     // 古いサムネイル画像を削除
                                     AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
@@ -93,7 +93,7 @@ namespace MitarashiDango.AvatarCatalog
                             }
                         }
 
-                        if (!avatarThumbnailImageExists || withRefreshThumbnail)
+                        if (!avatarThumbnailImageExists || withRegenerateThumbnails)
                         {
                             // サムネイル画像を新規作成または更新する
                             var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, avatarObject);

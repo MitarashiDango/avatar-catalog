@@ -208,9 +208,9 @@ namespace MitarashiDango.AvatarCatalog
             searchTextField.value = _searchText;
             searchTextField.RegisterValueChangedCallback(e => OnSearchTextFieldValueChanged(e));
 
-            var reloadAvatarCatalogMenu = header.Q<ToolbarMenu>("reload-avatar-catalog-menu");
-            reloadAvatarCatalogMenu.menu.AppendAction("アバター一覧を更新", action => ReloadAvatarList());
-            reloadAvatarCatalogMenu.menu.AppendAction("アバター一覧を更新（サムネイル画像再生成あり）", action => ReloadAvatarList(true));
+            var avatarCatalogMenu = header.Q<ToolbarMenu>("avatar-catalog-menu");
+            avatarCatalogMenu.menu.AppendAction("Update avatar catalog", action => ReloadAvatarList());
+            avatarCatalogMenu.menu.AppendAction("Update avatar catalog (with regenerate thumbnails)", action => ReloadAvatarList(true));
 
             var resizeGridItemSlider = footer.Q<Slider>("resize-grid-item-slider");
             resizeGridItemSlider.value = _gridItemSize;
@@ -370,9 +370,9 @@ namespace MitarashiDango.AvatarCatalog
                     ChangeToActiveAvatar(avatar);
                 });
 
-                e.menu.AppendAction("Update avatar thumbnail image", action =>
+                e.menu.AppendAction("Generate avatar thumbnail image", action =>
                 {
-                    UpdateAvatarThumbnail(avatar);
+                    GenerateAvatarThumbnail(avatar);
                     ReloadAvatars();
                 });
 
@@ -430,17 +430,17 @@ namespace MitarashiDango.AvatarCatalog
             AvatarMetadataEditorWindow.ShowWindow(avatarObject);
         }
 
-        private void BuildAvatarCatalogs(bool withRefreshThumbnails = false)
+        private void BuildAvatarCatalogDatabase(bool withRegenerateThumbnails = false)
         {
-            DatabaseBuilder.BuildAvatarCatalogDatabaseAndIndexes(withRefreshThumbnails);
+            DatabaseBuilder.BuildAvatarCatalogDatabaseAndIndexes(withRegenerateThumbnails);
 
             _avatarCatalogDatabase = AvatarCatalogDatabase.Load();
             _avatarSearchIndex = AvatarSearchIndex.Load();
         }
 
-        private void ReloadAvatarList(bool withRefreshThumbnails = false)
+        private void ReloadAvatarList(bool withRegenerateThumbnails = false)
         {
-            BuildAvatarCatalogs(withRefreshThumbnails);
+            BuildAvatarCatalogDatabase(withRegenerateThumbnails);
             UpdateGridLayout();
         }
 
@@ -460,7 +460,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void UpdateAvatarThumbnail(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private void GenerateAvatarThumbnail(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
             var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
             var scene = SceneManager.GetSceneByPath(scenePath);
@@ -617,7 +617,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnRunInitialSetupButtonClick()
         {
-            BuildAvatarCatalogs();
+            BuildAvatarCatalogDatabase();
             UpdateGridLayout();
             UpdateViews();
         }
