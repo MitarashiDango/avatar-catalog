@@ -1,5 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
 using MitarashiDango.AvatarCatalog.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -7,7 +10,10 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using VRC.Core;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3A.Editor;
+using VRC.SDKBase.Editor.Api;
 
 namespace MitarashiDango.AvatarCatalog
 {
@@ -385,9 +391,103 @@ namespace MitarashiDango.AvatarCatalog
                 {
                     ShowAvatarMetadataEditor(avatar);
                 });
+
+                e.menu.AppendAction("Build and Publish avatar", async action =>
+                {
+
+                    await BuildAndPublishAvatar(avatar);
+                });
             });
 
             return manipulator;
+        }
+
+        private async Task BuildAndPublishAvatar(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        {
+            ChangeToActiveAvatar(avatar);
+
+            if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
+            {
+                Debug.LogError("Failed to parse GlobalObjectId");
+                return;
+            }
+
+            var avatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
+            if (avatarObject == null)
+            {
+                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' が見つかりませんでした。", "OK");
+                Debug.LogError("failed to find avatar object");
+                return;
+            }
+
+            if (VRCSdkControlPanel.window == null)
+            {
+                EditorUtility.DisplayDialog("エラー", "VRChat SDKを表示してください。", "OK");
+                Debug.LogError("please open VRChat SDK window");
+                return;
+            }
+
+            VRChatUtil.InitializeRemoteConfig();
+
+            await VRChatUtil.LogIn();
+
+            if (!APIUser.IsLoggedIn)
+            {
+                if (!APIUser.IsLoggedIn)
+                {
+                    EditorUtility.DisplayDialog("エラー", "VRChat アカウントでログインしてください。", "OK");
+                    Debug.LogError("please login with your VRChat account");
+                    return;
+                }
+            }
+
+            if (!VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder))
+            {
+                Debug.LogError("failed to get avatar builder");
+                return;
+            }
+
+            var pipelineManager = avatarObject.GetComponent<PipelineManager>();
+            if (pipelineManager == null)
+            {
+                Debug.LogError("failed to find Pipeline Manager");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(pipelineManager.blueprintId))
+            {
+                Debug.LogError("Blueprint ID is null or empty");
+                return;
+            }
+
+            VRCAvatar vrcAvatar = default;
+            try
+            {
+                vrcAvatar = await VRCApi.GetAvatar(pipelineManager.blueprintId, true);
+            }
+            catch (ApiErrorException ex)
+            {
+                if (ex.StatusCode != HttpStatusCode.NotFound)
+                {
+                    throw new Exception("Unexpected error", ex);
+                }
+            }
+
+            if (string.IsNullOrEmpty(vrcAvatar.ID))
+            {
+                Debug.LogError("Avatars not yet uploaded");
+                return;
+            }
+
+            try
+            {
+                await builder.BuildAndUpload(avatarObject, vrcAvatar);
+                EditorUtility.DisplayDialog("情報", "アバターのビルドおよびアップロードが完了しました。", "OK");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e.Message);
+            }
         }
 
         private void ShowAvatarMetadataEditor(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
