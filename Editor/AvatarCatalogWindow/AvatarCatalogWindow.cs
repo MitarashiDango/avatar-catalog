@@ -427,37 +427,12 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            if (!ConfigManager.RemoteConfig.IsInitialized())
-            {
-                API.SetOnlineMode(true);
-                ConfigManager.RemoteConfig.Init();
-            }
+            VRChatUtil.InitializeRemoteConfig();
+
+            await VRChatUtil.LogIn();
 
             if (!APIUser.IsLoggedIn)
             {
-                VRCSdkControlPanel.InitAccount();
-                if (ApiCredentials.Load())
-                {
-                    var tcs = new TaskCompletionSource<bool>();
-                    APIUser.InitialFetchCurrentUser(c =>
-                    {
-                        if (c.Model is not APIUser apiUser)
-                        {
-                            Debug.LogError("failed to load user, please login again with your VRChat account");
-                            tcs.SetResult(false);
-                            return;
-                        }
-                        AnalyticsSDK.LoggedInUserChanged(apiUser);
-                        tcs.SetResult(true);
-                    }, err =>
-                    {
-                        Debug.LogError(err.Error);
-                        tcs.SetResult(false);
-                    });
-
-                    await tcs.Task;
-                }
-
                 if (!APIUser.IsLoggedIn)
                 {
                     EditorUtility.DisplayDialog("エラー", "VRChat アカウントでログインしてください。", "OK");
