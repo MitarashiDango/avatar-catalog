@@ -9,7 +9,7 @@ namespace MitarashiDango.AvatarCatalog
     public static class FontCache
     {
         private static readonly string[] PreferredJapaneseFontsWindows = { "Meiryo UI", "Yu Gothic UI", "MS UI Gothic", "メイリオ", "游ゴシック" };
-        private static readonly string[] PreferredJapaneseFontsMacOS = { "Hiragino Sans", "ヒラギノ角ゴシック ProN", "ヒラギノ角ゴシック Pro", "Hiragino Kaku Gothic ProN", "Hiragino Kaku Gothic Pro" };
+        private static readonly string[] PreferredJapaneseFontsMacOS = { "ヒラギノ角ゴシック ProN", "ヒラギノ角ゴシック Pro", "Hiragino Kaku Gothic ProN", "Hiragino Kaku Gothic Pro", "Hiragino Sans" };
         private static readonly string[] PreferredFallbackFonts = { "Segoe UI", "Arial", "Helvetica Neue", "Helvetica", "Verdana" };
 
         private static readonly Dictionary<string, FontAsset> _cachedFonts = new Dictionary<string, FontAsset>();
