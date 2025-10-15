@@ -13,6 +13,7 @@ using UnityEngine.UIElements;
 using VRC.Core;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3A.Editor;
+using VRC.SDKBase;
 using VRC.SDKBase.Editor.Api;
 
 namespace MitarashiDango.AvatarCatalog
@@ -420,30 +421,20 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            if (VRCSdkControlPanel.window == null)
-            {
-                EditorUtility.DisplayDialog("エラー", "VRChat SDKを表示してください。", "OK");
-                Debug.LogError("please open VRChat SDK window");
-                return;
-            }
-
+            VRChatUtil.ClearVRCSDKIssues();
             VRChatUtil.InitializeRemoteConfig();
 
-            await VRChatUtil.LogIn();
-
-            if (!APIUser.IsLoggedIn)
+            if (!await VRChatUtil.LogIn())
             {
-                if (!APIUser.IsLoggedIn)
-                {
-                    EditorUtility.DisplayDialog("エラー", "VRChat アカウントでログインしてください。", "OK");
-                    Debug.LogError("please login with your VRChat account");
-                    return;
-                }
+                EditorUtility.DisplayDialog("エラー", "VRChat アカウントでログインしてください。", "OK");
+                Debug.LogError("please login with your VRChat account");
+                return;
             }
 
             if (!VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder))
             {
                 Debug.LogError("failed to get avatar builder");
+                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
                 return;
             }
 
@@ -451,12 +442,14 @@ namespace MitarashiDango.AvatarCatalog
             if (pipelineManager == null)
             {
                 Debug.LogError("failed to find Pipeline Manager");
+                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
                 return;
             }
 
             if (string.IsNullOrEmpty(pipelineManager.blueprintId))
             {
                 Debug.LogError("Blueprint ID is null or empty");
+                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
                 return;
             }
 
@@ -476,11 +469,21 @@ namespace MitarashiDango.AvatarCatalog
             if (string.IsNullOrEmpty(vrcAvatar.ID))
             {
                 Debug.LogError("Avatars not yet uploaded");
+                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
                 return;
+            }
+
+            if (!VRChatUtil.AgreedContentThisSession.Contains(vrcAvatar.ID))
+            {
+                if (!EditorUtility.DisplayDialog("Confirm", VRCCopyrightAgreement.AgreementText, "OK", "Cancel"))
+                {
+                    return;
+                }
             }
 
             try
             {
+                await VRChatUtil.AgreeCopyrightAgreement(vrcAvatar.ID);
                 await builder.BuildAndUpload(avatarObject, vrcAvatar);
                 EditorUtility.DisplayDialog("情報", "アバターのビルドおよびアップロードが完了しました。", "OK");
             }
