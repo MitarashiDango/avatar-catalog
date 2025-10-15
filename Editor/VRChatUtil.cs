@@ -1,12 +1,20 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 using VRC.Core;
+using VRC.SDKBase;
+using VRC.SDKBase.Editor.Api;
 
 namespace MitarashiDango.AvatarCatalog
 {
     public class VRChatUtil
     {
+        private const string AgreementCode = "content.copyright.owned";
+        private const string VRCCopyrightAgreementCotentListKey = "VRCSdkControlPanel.CopyrightAgreement.ContentList";
+
         public static void InitializeRemoteConfig()
         {
             if (ConfigManager.RemoteConfig.IsInitialized())
@@ -18,22 +26,41 @@ namespace MitarashiDango.AvatarCatalog
             ConfigManager.RemoteConfig.Init();
         }
 
-        public static async Task LogIn()
+        public static async Task<bool> LogIn()
         {
             if (APIUser.IsLoggedIn)
             {
-                return;
+                return true;
             }
 
-            VRCSdkControlPanel.InitAccount();
-            await FetchCurrentUser();
+            if (!ApiCredentials.Load())
+            {
+                return false;
+            }
+
+            try
+            {
+                await FetchCurrentUser();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError(ex);
+                return false;
+            }
+
+            return APIUser.IsLoggedIn;
         }
 
         public static async Task FetchCurrentUser()
         {
             if (!ApiCredentials.Load())
             {
-                return;
+                throw new Exception("failed to load api credentials.");
+            }
+
+            if (!APIUser.IsLoggedIn)
+            {
+                throw new Exception("not logged in.");
             }
 
             var tcs = new TaskCompletionSource<bool>();
@@ -54,6 +81,51 @@ namespace MitarashiDango.AvatarCatalog
             });
 
             await tcs.Task;
+        }
+
+        public static List<string> AgreedContentThisSession
+        {
+            get
+            {
+                var agreedContents = SessionState.GetString(VRCCopyrightAgreementCotentListKey, null);
+                if (string.IsNullOrEmpty(agreedContents))
+                {
+                    return new List<string>();
+                }
+
+                return agreedContents.Split(";").ToList();
+            }
+        }
+
+        public static async Task AgreeCopyrightAgreement(string contentId)
+        {
+            var agreedContents = AgreedContentThisSession;
+            if (agreedContents.Contains(contentId))
+            {
+                return;
+            }
+
+            agreedContents.Add(contentId);
+            SessionState.SetString(VRCCopyrightAgreementCotentListKey, string.Join(";", agreedContents));
+
+            var vrcAgreement = new VRCAgreement
+            {
+                AgreementCode = AgreementCode,
+                AgreementFulltext = VRCCopyrightAgreement.AgreementText,
+                ContentId = contentId,
+                Version = 1,
+            };
+
+            await VRCApi.ContentUploadConsent(vrcAgreement);
+        }
+
+        public static void ClearVRCSDKIssues()
+        {
+            if (VRCSdkControlPanel.window)
+            {
+                VRCSdkControlPanel.window.ResetIssues();
+                VRCSdkControlPanel.window.CheckedForIssues = true;
+            }
         }
     }
 }
