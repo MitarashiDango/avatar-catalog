@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEditor;
-using UnityEngine;
 using VRC.Core;
 using VRC.SDKBase;
 using VRC.SDKBase.Editor.Api;
@@ -35,32 +34,19 @@ namespace MitarashiDango.AvatarCatalog
 
             if (!ApiCredentials.Load())
             {
-                return false;
+                return APIUser.IsLoggedIn;
             }
 
-            try
-            {
-                await FetchCurrentUser();
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError(ex);
-                return false;
-            }
+            await FetchCurrentUser();
 
             return APIUser.IsLoggedIn;
         }
 
-        public static async Task FetchCurrentUser()
+        private static async Task FetchCurrentUser()
         {
-            if (!ApiCredentials.Load())
+            if (!APIUser.IsLoggedIn && !ApiCredentials.Load())
             {
                 throw new Exception("failed to load api credentials.");
-            }
-
-            if (!APIUser.IsLoggedIn)
-            {
-                throw new Exception("not logged in.");
             }
 
             var tcs = new TaskCompletionSource<bool>();
@@ -76,8 +62,7 @@ namespace MitarashiDango.AvatarCatalog
                 tcs.SetResult(true);
             }, err =>
             {
-                Debug.LogError(err.Error);
-                tcs.SetResult(false);
+                tcs.SetException(new Exception(string.IsNullOrEmpty(err.Error) ? "unspecified error has occurred." : err.Error));
             });
 
             await tcs.Task;

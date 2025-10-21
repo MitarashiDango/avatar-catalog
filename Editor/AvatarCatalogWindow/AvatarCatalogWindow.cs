@@ -424,10 +424,19 @@ namespace MitarashiDango.AvatarCatalog
             VRChatUtil.ClearVRCSDKIssues();
             VRChatUtil.InitializeRemoteConfig();
 
-            if (!await VRChatUtil.LogIn())
+            try
             {
-                EditorUtility.DisplayDialog("エラー", "VRChat アカウントでログインしてください。", "OK");
-                Debug.LogError("please login with your VRChat account");
+                if (!await VRChatUtil.LogIn())
+                {
+                    EditorUtility.DisplayDialog("エラー", "VRChat アカウントでログインしてください。", "OK");
+                    Debug.LogError("please login with your VRChat account");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError(ex);
+                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
                 return;
             }
 
