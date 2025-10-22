@@ -620,11 +620,12 @@ namespace MitarashiDango.AvatarCatalog
                     {
                         // 古いサムネイル画像を削除
                         AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
+                        avatarCatalogDatabaseEntry.thumbnailImageGuid = "";
                         AssetDatabase.Refresh();
                     }
 
                     // 再生成したサムネイル画像を保存
-                    avatarCatalogDatabaseEntry.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail, targetAvatarObject).ToString();
+                    avatarCatalogDatabaseEntry.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
                 }
 
                 AvatarCatalogDatabase.Save(_avatarCatalogDatabase);
