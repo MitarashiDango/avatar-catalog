@@ -62,7 +62,7 @@ namespace MitarashiDango.AvatarCatalog
                             avatarGlobalObjectId = avatarGlobalObjectIdString,
                             avatarObjectName = avatarObject.name,
                             sceneAsset = sceneAsset,
-                            thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail, avatarObject).ToString(),
+                            thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString(),
                             avatarMetadataGuid = avatarMetadataGuid,
                         });
                     }
@@ -75,21 +75,18 @@ namespace MitarashiDango.AvatarCatalog
 
                         var avatarThumbnailImageExists = string.IsNullOrEmpty(avatar.thumbnailImageGuid) && !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(avatar.thumbnailImageGuid));
 
-                        if (avatarThumbnailImageExists)
+                        if (avatarThumbnailImageExists && GUID.TryParse(avatar.thumbnailImageGuid, out var thumbnailImageGuid))
                         {
                             // 既存のアバターサムネイル画像に対する処理
-                            if (GUID.TryParse(avatar.thumbnailImageGuid, out var thumbnailImageGuid))
+                            if (withRegenerateThumbnails)
                             {
-                                if (withRegenerateThumbnails)
-                                {
-                                    // 古いサムネイル画像を削除
-                                    AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
-                                }
-                                else
-                                {
-                                    // サムネイル画像のファイル名を更新する
-                                    AvatarThumbnailUtil.RenameAvatarThumbnailImage(thumbnailImageGuid, avatarObject);
-                                }
+                                // 古いサムネイル画像を削除
+                                AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
+                            }
+                            else
+                            {
+                                // サムネイル画像のファイル名を更新する
+                                AvatarThumbnailUtil.RenameToGUID(thumbnailImageGuid);
                             }
                         }
 
@@ -97,7 +94,13 @@ namespace MitarashiDango.AvatarCatalog
                         {
                             // サムネイル画像を新規作成または更新する
                             var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, avatarObject);
-                            avatar.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail, avatarObject).ToString();
+                            if (!string.IsNullOrEmpty(avatar.thumbnailImageGuid))
+                            {
+                                AvatarThumbnailUtil.DeleteAvatarThumbnailImage(avatar.thumbnailImageGuid);
+                                avatar.thumbnailImageGuid = "";
+                            }
+
+                            avatar.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
                         }
 
                         newAvatars.Add(avatar);
