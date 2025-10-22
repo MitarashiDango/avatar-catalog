@@ -42,8 +42,7 @@ namespace MitarashiDango.AvatarCatalog
         /// <returns>リネーム後のファイルパス</returns>
         public static string RenameToGUID(GUID fileGUID)
         {
-            var guid = AssetDatabase.GUIDToAssetPath(fileGUID);
-            return RenameAvatarThumbnailImage(fileGUID, guid);
+            return RenameAvatarThumbnailImage(fileGUID, fileGUID.ToString());
         }
 
         /// <summary>
