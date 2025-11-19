@@ -73,7 +73,7 @@ namespace MitarashiDango.AvatarCatalog
                         avatar.avatarObjectName = avatarObject.name;
                         avatar.avatarMetadataGuid = avatarMetadataGuid;
 
-                        var avatarThumbnailImageExists = string.IsNullOrEmpty(avatar.thumbnailImageGuid) && !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(avatar.thumbnailImageGuid));
+                        var avatarThumbnailImageExists = IsAssetExists(avatar.thumbnailImageGuid);
 
                         if (avatarThumbnailImageExists && GUID.TryParse(avatar.thumbnailImageGuid, out var thumbnailImageGuid))
                         {
@@ -119,6 +119,16 @@ namespace MitarashiDango.AvatarCatalog
             RefreshIndexes();
 
             AssetDatabase.Refresh();
+        }
+
+        private static bool IsAssetExists(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+            {
+                return false;
+            }
+
+            return !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(guid));
         }
 
         private static void RefreshIndexes()
