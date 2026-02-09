@@ -544,7 +544,8 @@ namespace MitarashiDango.AvatarCatalog
 
         private void BuildAvatarCatalogDatabase(bool withRegenerateThumbnails = false)
         {
-            DatabaseBuilder.BuildAvatarCatalogDatabaseAndIndexes(withRegenerateThumbnails);
+            var databaseBuilder = new DatabaseBuilder();
+            databaseBuilder.BuildAvatarCatalogDatabaseAndIndexes(withRegenerateThumbnails);
 
             _avatarCatalogDatabase = AvatarCatalogDatabase.Load();
             _avatarSearchIndex = AvatarSearchIndex.Load();

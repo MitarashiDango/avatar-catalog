@@ -7,4 +7,5 @@
     <uie:PropertyField name="tags-field" binding-path="tags" />
     <ui:TextField picking-mode="Ignore" label="Release datetime" name="release-datetime-field" binding-path="releaseDateTime" />
     <uie:PropertyField name="licenses-field" binding-path="licenses" label="Licenses" />
+    <ui:TextField picking-mode="Ignore" label="Product Root Folder (Optional)" binding-path="rootFolderPath" />
 </ui:UXML>
