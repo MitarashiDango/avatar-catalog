@@ -79,15 +79,21 @@ namespace MitarashiDango.AvatarCatalog
                     {
                         // 未追加のアバター
                         var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, avatarObject);
-
-                        newAvatars.Add(new AvatarCatalogDatabase.AvatarCatalogEntry()
+                        try
                         {
-                            avatarGlobalObjectId = avatarGlobalObjectIdString,
-                            avatarObjectName = avatarObject.name,
-                            sceneAsset = sceneAsset,
-                            thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString(),
-                            avatarMetadataGuid = avatarMetadataGuid,
-                        });
+                            newAvatars.Add(new AvatarCatalogDatabase.AvatarCatalogEntry()
+                            {
+                                avatarGlobalObjectId = avatarGlobalObjectIdString,
+                                avatarObjectName = avatarObject.name,
+                                sceneAsset = sceneAsset,
+                                thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString(),
+                                avatarMetadataGuid = avatarMetadataGuid,
+                            });
+                        }
+                        finally
+                        {
+                            UnityEngine.Object.DestroyImmediate(thumbnail);
+                        }
                     }
                     else
                     {
@@ -117,13 +123,20 @@ namespace MitarashiDango.AvatarCatalog
                         {
                             // サムネイル画像を新規作成または更新する
                             var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, avatarObject);
-                            if (!string.IsNullOrEmpty(avatar.thumbnailImageGuid))
+                            try
                             {
-                                AvatarThumbnailUtil.DeleteAvatarThumbnailImage(avatar.thumbnailImageGuid);
-                                avatar.thumbnailImageGuid = "";
-                            }
+                                if (!string.IsNullOrEmpty(avatar.thumbnailImageGuid))
+                                {
+                                    AvatarThumbnailUtil.DeleteAvatarThumbnailImage(avatar.thumbnailImageGuid);
+                                    avatar.thumbnailImageGuid = "";
+                                }
 
-                            avatar.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
+                                avatar.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
+                            }
+                            finally
+                            {
+                                UnityEngine.Object.DestroyImmediate(thumbnail);
+                            }
                         }
 
                         newAvatars.Add(avatar);
