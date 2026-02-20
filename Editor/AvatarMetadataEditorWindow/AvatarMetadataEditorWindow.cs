@@ -48,7 +48,8 @@ namespace MitarashiDango.AvatarCatalog
             if (_currentTargetAvatar != null && _serializedObject != null)
             {
                 var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
-                DatabaseBuilder.RefreshIndexes(globalObjectId);
+                var databaseBuilder = new DatabaseBuilder();
+                databaseBuilder.RefreshIndexes(globalObjectId);
             }
         }
 
@@ -290,7 +291,8 @@ namespace MitarashiDango.AvatarCatalog
             if (_currentTargetAvatar != null && _serializedObject != null)
             {
                 var globalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
-                DatabaseBuilder.RefreshIndexes(globalObjectId);
+                var databaseBuilder = new DatabaseBuilder();
+                databaseBuilder.RefreshIndexes(globalObjectId);
             }
 
             var newTarget = evt.newValue as GameObject;
@@ -375,7 +377,8 @@ namespace MitarashiDango.AvatarCatalog
                                 entry.avatarMetadataGuid = "";
                                 AvatarCatalogDatabase.Save(avatarCatalogDatabase);
                                 AssetDatabase.Refresh();
-                                DatabaseBuilder.RefreshIndexes(globalObjectId);
+                                var databaseBuilder = new DatabaseBuilder();
+                                databaseBuilder.RefreshIndexes(globalObjectId);
                             }
                         }
                     }

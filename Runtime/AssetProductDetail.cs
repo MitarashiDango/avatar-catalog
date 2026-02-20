@@ -10,6 +10,11 @@ namespace MitarashiDango.AvatarCatalog.Runtime
     public class AssetProductDetail : ScriptableObject
     {
         /// <summary>
+        /// 製品が配置されるフォルダーパス (空値の場合、製品情報ファイルが配置されているフォルダーが自動的に採用される)
+        /// </summary>
+        public string rootFolderPath;
+
+        /// <summary>
         /// 製品名
         /// </summary>
         public string productName;
