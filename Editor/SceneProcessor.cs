@@ -10,21 +10,20 @@ namespace MitarashiDango.AvatarCatalog
 {
     public static class SceneProcessor
     {
-        public static List<SceneAsset> GetAllSceneAssets()
+        public static IEnumerable<string> GetAllSceneAssetPaths()
         {
             return AssetDatabase.FindAssets("t:SceneAsset", new[] { "Assets" })
                 .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
-                .Select(path => AssetDatabase.LoadAssetAtPath<SceneAsset>(path))
-                .Where(asset => asset != null)
-                .ToList();
+                .Where(path => !string.IsNullOrEmpty(path));
         }
 
         public static void WalkAllScenes(Action<SceneAsset, Scene> walkAction)
         {
-            var sceneAssets = GetAllSceneAssets();
-            foreach (var sceneAsset in sceneAssets)
+            var sceneAssetPaths = GetAllSceneAssetPaths();
+            foreach (var sceneAssetPath in sceneAssetPaths)
             {
-                ProcessSceneTemporarily(sceneAsset, (scene) => walkAction(sceneAsset, scene));
+                var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(sceneAssetPath);
+                ProcessSceneTemporarily(sceneAssetPath, (scene) => walkAction(sceneAsset, scene));
             }
         }
 
