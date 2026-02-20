@@ -267,10 +267,13 @@ namespace MitarashiDango.AvatarCatalog
             foreach (var removedAvatar in removedAvatars)
             {
                 // サムネイル画像の削除
-                var thumbnailImagePath = AssetDatabase.GUIDToAssetPath(new GUID(removedAvatar.thumbnailImageGuid));
-                if (thumbnailImagePath != "")
+                if (GUID.TryParse(removedAvatar.thumbnailImageGuid, out var guid))
                 {
-                    AssetDatabase.DeleteAsset(thumbnailImagePath);
+                    var thumbnailImagePath = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!string.IsNullOrEmpty(thumbnailImagePath))
+                    {
+                        AssetDatabase.DeleteAsset(thumbnailImagePath);
+                    }
                 }
             }
         }
