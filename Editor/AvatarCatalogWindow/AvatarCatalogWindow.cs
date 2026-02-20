@@ -617,16 +617,23 @@ namespace MitarashiDango.AvatarCatalog
                 if (avatarCatalogDatabaseEntry != null)
                 {
                     var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, targetAvatarObject);
-                    if (avatarCatalogDatabaseEntry.thumbnailImageGuid != "" && GUID.TryParse(avatarCatalogDatabaseEntry.thumbnailImageGuid, out var thumbnailImageGuid))
+                    try
                     {
-                        // 古いサムネイル画像を削除
-                        AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
-                        avatarCatalogDatabaseEntry.thumbnailImageGuid = "";
-                        AssetDatabase.Refresh();
-                    }
+                        if (avatarCatalogDatabaseEntry.thumbnailImageGuid != "" && GUID.TryParse(avatarCatalogDatabaseEntry.thumbnailImageGuid, out var thumbnailImageGuid))
+                        {
+                            // 古いサムネイル画像を削除
+                            AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
+                            avatarCatalogDatabaseEntry.thumbnailImageGuid = "";
+                            AssetDatabase.Refresh();
+                        }
 
-                    // 再生成したサムネイル画像を保存
-                    avatarCatalogDatabaseEntry.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
+                        // 再生成したサムネイル画像を保存
+                        avatarCatalogDatabaseEntry.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
+                    }
+                    finally
+                    {
+                        UnityEngine.Object.DestroyImmediate(thumbnail);
+                    }
                 }
 
                 AvatarCatalogDatabase.Save(_avatarCatalogDatabase);
