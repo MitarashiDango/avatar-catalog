@@ -760,6 +760,11 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnGeometryChanged(GeometryChangedEvent e)
         {
+            // 幅が変わっていない（高さのみの変更や微小なレイアウト更新）場合はリビルドをスキップ
+            if (Mathf.Approximately(e.oldRect.width, e.newRect.width))
+            {
+                return;
+            }
             UpdateGridLayout();
         }
     }
