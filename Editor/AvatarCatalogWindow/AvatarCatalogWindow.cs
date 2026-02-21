@@ -65,6 +65,23 @@ namespace MitarashiDango.AvatarCatalog
             _gridItemSize = _preferences != null ? _preferences.avatarCatalogItemSize : Preferences.DefaultAvatarCatalogMaxItemSize;
         }
 
+        private bool EnsureSceneLoaded(string scenePath, OpenSceneMode mode, out Scene scene)
+        {
+            scene = SceneManager.GetSceneByPath(scenePath);
+            if (scene.isLoaded)
+            {
+                return true;
+            }
+
+            if (!EditorSceneManager.SaveOpenScenes())
+            {
+                return false;
+            }
+
+            scene = EditorSceneManager.OpenScene(scenePath, mode);
+            return scene.IsValid() && scene.isLoaded;
+        }
+
         private GameObject ChangeSelectingObject(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
             if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
@@ -74,16 +91,10 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
-            var scene = SceneManager.GetSceneByPath(scenePath);
-            if (!scene.isLoaded)
-            {
-                if (!EditorSceneManager.SaveOpenScenes())
-                {
-                    Debug.LogError("failed to save open scene");
-                    return null;
-                }
 
-                scene = EditorSceneManager.OpenScene(scenePath);
+            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Single, out var scene))
+            {
+                return null;
             }
 
             var targetAvatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
@@ -395,7 +406,6 @@ namespace MitarashiDango.AvatarCatalog
 
                 e.menu.AppendAction("Build and Publish avatar", async action =>
                 {
-
                     await BuildAndPublishAvatar(avatar);
                 });
             });
@@ -506,21 +516,19 @@ namespace MitarashiDango.AvatarCatalog
         {
             var currentScenePath = SceneManager.GetActiveScene().path;
             var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
-            var scene = SceneManager.GetSceneByPath(scenePath);
-            if (!scene.isLoaded)
+
+            // ロードされていない場合は専用の確認ダイアログを出してから共通処理へ
+            if (!SceneManager.GetSceneByPath(scenePath).isLoaded)
             {
                 if (!EditorUtility.DisplayDialog("シーン切り替え確認", $"アバター '{avatar.avatarObjectName}' のメタデータを編集するため、シーンを切り替えます。\nよろしいですか？", "はい", "いいえ"))
                 {
                     return;
                 }
+            }
 
-                if (!EditorSceneManager.SaveOpenScenes())
-                {
-                    Debug.LogError("failed to save open scene");
-                    return;
-                }
-
-                EditorSceneManager.OpenScene(scenePath);
+            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Single, out var scene))
+            {
+                return;
             }
 
             if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
@@ -576,23 +584,17 @@ namespace MitarashiDango.AvatarCatalog
         private void GenerateAvatarThumbnail(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
             var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
-            var scene = SceneManager.GetSceneByPath(scenePath);
+
+            // Additiveでロード
+            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Additive, out var scene))
+            {
+                return;
+            }
 
             using var avatarRenderer = new AvatarRenderer();
 
             try
             {
-                if (!scene.isLoaded)
-                {
-                    if (!EditorSceneManager.SaveOpenScenes())
-                    {
-                        Debug.LogError("failed to save open scene");
-                        return;
-                    }
-
-                    scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
-                }
-
                 if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
                 {
                     Debug.LogWarning("Failed to parse GlobalObjectId");
@@ -651,20 +653,15 @@ namespace MitarashiDango.AvatarCatalog
         private void AddAvatarCatalogThumbnailSettingsComponent(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
             var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
-            var scene = SceneManager.GetSceneByPath(scenePath);
+
+            // Additiveでロード
+            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Additive, out var scene))
+            {
+                return;
+            }
+
             try
             {
-                if (!scene.isLoaded)
-                {
-                    if (!EditorSceneManager.SaveOpenScenes())
-                    {
-                        Debug.LogError("failed to save open scene");
-                        return;
-                    }
-
-                    scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
-                }
-
                 if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
                 {
                     Debug.LogError("Failed to parse GlobalObjectId");
@@ -764,21 +761,6 @@ namespace MitarashiDango.AvatarCatalog
         private void OnGeometryChanged(GeometryChangedEvent e)
         {
             UpdateGridLayout();
-        }
-
-        internal class AvatarListItem
-        {
-            public string avatarName { get; set; }
-            public SceneAsset scene { get; set; }
-            public GlobalObjectId avatarGlobalObjectId { get; set; }
-            public string thumbnailGlobalObjectId { get; set; }
-
-            public AvatarListItem(SceneAsset sceneAsset, GameObject avatar)
-            {
-                scene = sceneAsset;
-                avatarName = avatar.name;
-                avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatar);
-            }
         }
     }
 }
