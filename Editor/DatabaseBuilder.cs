@@ -11,6 +11,8 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class DatabaseBuilder
     {
+        private MigrateAvatarMetadata migrateAvatarMetadata = new MigrateAvatarMetadata();
+
         public DatabaseBuilder()
         {
         }
@@ -57,6 +59,7 @@ namespace MitarashiDango.AvatarCatalog
 
                     // マイグレーション処理
                     AvatarMetadataUtil.MigrateAvatarMetadataSettings(avatarObject);
+                    migrateAvatarMetadata.Do(avatarObject);
 
                     var avatarMetadataSettings = avatarObject.GetComponent<AvatarMetadataSettings>();
                     var avatarMetadataGuid = "";

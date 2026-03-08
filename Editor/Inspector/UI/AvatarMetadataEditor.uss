@@ -1,0 +1,40 @@
+:root {
+    flex-grow: 1;
+}
+
+.unity-editor-window__content > VisualElement {
+    padding: 5px;
+}
+
+.section {
+    margin-bottom: 10px;
+    flex-grow: 1;
+    flex-shrink: 0;
+}
+
+.field-group {
+    margin-bottom: 8px;
+}
+
+.field-title {
+    margin-bottom: 5px;
+    margin-left: 2px;
+}
+
+.field-content {
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.comment-field {
+    min-height: 60px;
+    max-height: 150px;
+}
+
+.editor-container {
+    min-height: 0px;
+}
+
+:disabled {
+    opacity: 0.5;
+}
