@@ -1,0 +1,19 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/Inspector/UI/AvatarMetadataEditor.uss?fileID=7433441132597879392&amp;guid=7948cc247067bfa4c988337ff21d1e25&amp;type=3#AvatarCatalogMetadataEditor" />
+    <ui:ScrollView class="editor-content">
+        <ui:VisualElement class="section">
+            <ui:VisualElement class="field-group">
+                <ui:Label text="コメント" class="field-title" />
+                <ui:TextField name="comment-field" multiline="true" binding-path="comment" class="comment-field field-content" />
+            </ui:VisualElement>
+            <ui:VisualElement class="field-group">
+                <ui:Label text="タグ情報" class="field-title" />
+                <uie:PropertyField name="tags-field" binding-path="tags" class="field-content" />
+            </ui:VisualElement>
+            <ui:VisualElement class="field-group">
+                <ui:Label text="使用しているアセット情報" class="field-title" />
+                <uie:PropertyField name="asset-product-details-field" binding-path="assetProductDetails" class="field-content" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:ScrollView>
+</ui:UXML>

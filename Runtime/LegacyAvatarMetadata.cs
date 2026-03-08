@@ -1,13 +1,16 @@
 using System.Collections.Generic;
 using UnityEngine;
-using VRC.SDKBase;
 
 namespace MitarashiDango.AvatarCatalog.Runtime
 {
-    [DisallowMultipleComponent]
-    [AddComponentMenu("Avatar Catalog/Avatar Catalog Metadata")]
-    public class AvatarMetadata : MonoBehaviour, IEditorOnly
+    [CreateAssetMenu(menuName = "Avatar Catalog/Avatar Metadata")]
+    public class LegacyAvatarMetadata : ScriptableObject
     {
+        /// <summary>
+        /// メタデータが紐付いているアバターオブジェクトのグローバルオブジェクトID
+        /// </summary>
+        public string avatarGlobalObjectId = "";
+
         /// <summary>
         /// コメント
         /// </summary>

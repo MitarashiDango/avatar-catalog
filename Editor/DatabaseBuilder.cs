@@ -11,6 +11,8 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class DatabaseBuilder
     {
+        private MigrateAvatarMetadata migrateAvatarMetadata = new MigrateAvatarMetadata();
+
         public DatabaseBuilder()
         {
         }
@@ -31,64 +33,42 @@ namespace MitarashiDango.AvatarCatalog
             var prevAvatars = avatarCatalogDatabase.GetMappedAvatarCatalogEntries();
             var newAvatars = new List<AvatarCatalogDatabase.AvatarCatalogEntry>();
 
-            var allAssetProductDetailWithFolderPaths = GetAllAssetProductDetails()
-                .Select(apd =>
-                {
-                    var folderPath = string.IsNullOrEmpty(apd.rootFolderPath)
-                        ? Path.GetDirectoryName(AssetDatabase.GetAssetPath(apd))
-                        : apd.rootFolderPath;
-                    return (assetProductDetail: apd, folderPath: folderPath.Replace("\\", "/"));
-                })
-                .ToList();
-            var assetProductDetails = new Dictionary<string, List<AssetProductDetail>>();
+            var avatarSearchIndexSources = new List<AvatarSearchIndexSource>();
 
             using var avatarRenderer = new AvatarRenderer();
 
             SceneProcessor.WalkAllScenes((sceneAsset, currentScene) =>
             {
                 var currentSceneRootObjects = currentScene.GetRootGameObjects();
-                var avatarObjects = currentSceneRootObjects.Where(o => o != null && o.GetComponent<VRCAvatarDescriptor>() != null);
 
-                foreach (var avatarObject in avatarObjects)
+                var extractedAvatars = currentSceneRootObjects
+                    .Where(obj => obj != null && obj.GetComponent<VRCAvatarDescriptor>() != null)
+                    .Select(avatarObject =>
+                    {
+                        // マイグレーション処理
+                        AvatarMetadataUtil.MigrateAvatarMetadataSettings(avatarObject);
+                        migrateAvatarMetadata.Do(avatarObject);
+
+                        return (AvatarRootObject: avatarObject, ExtractedAvatarData: ExtractAvatarData(avatarObject));
+                    });
+
+                foreach (var extractedAvatar in extractedAvatars)
                 {
-                    var avatarDescriptor = avatarObject.GetComponent<VRCAvatarDescriptor>();
-                    var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarObject);
-                    var avatarGlobalObjectIdString = avatarGlobalObjectId.ToString();
-
-                    // マイグレーション処理
-                    AvatarMetadataUtil.MigrateAvatarMetadataSettings(avatarObject);
-
-                    var avatarMetadataSettings = avatarObject.GetComponent<AvatarMetadataSettings>();
-                    var avatarMetadataGuid = "";
-                    if (avatarMetadataSettings != null && avatarMetadataSettings.avatarMetadata != null)
-                    {
-                        var avatarMetadataFilePath = AssetDatabase.GetAssetPath(avatarMetadataSettings.avatarMetadata);
-                        if (!string.IsNullOrEmpty(avatarMetadataFilePath))
-                        {
-                            avatarMetadataGuid = AssetDatabase.AssetPathToGUID(avatarMetadataFilePath);
-                        }
-                    }
-
-                    var referencedAssetProductDetails = GetReferencedAssetProductDetails(avatarObject, allAssetProductDetailWithFolderPaths).ToList();
-                    if (referencedAssetProductDetails.Count > 0)
-                    {
-                        assetProductDetails.Add(avatarGlobalObjectId.ToString(), referencedAssetProductDetails);
-                    }
-
-                    if (!prevAvatars.ContainsKey(avatarGlobalObjectIdString))
+                    if (!prevAvatars.ContainsKey(extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId))
                     {
                         // 未追加のアバター
-                        var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, avatarObject);
+                        var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, extractedAvatar.AvatarRootObject);
                         try
                         {
                             newAvatars.Add(new AvatarCatalogDatabase.AvatarCatalogEntry()
                             {
-                                avatarGlobalObjectId = avatarGlobalObjectIdString,
-                                avatarObjectName = avatarObject.name,
+                                avatarGlobalObjectId = extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId,
+                                avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
                                 sceneAsset = sceneAsset,
                                 thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString(),
-                                avatarMetadataGuid = avatarMetadataGuid,
                             });
+
+                            avatarSearchIndexSources.Add(extractedAvatar.ExtractedAvatarData.GetAvatarSearchIndexSource());
                         }
                         finally
                         {
@@ -98,9 +78,10 @@ namespace MitarashiDango.AvatarCatalog
                     else
                     {
                         // 既知のアバター情報の更新
-                        var avatar = new AvatarCatalogDatabase.AvatarCatalogEntry(prevAvatars[avatarGlobalObjectIdString]);
-                        avatar.avatarObjectName = avatarObject.name;
-                        avatar.avatarMetadataGuid = avatarMetadataGuid;
+                        var avatar = new AvatarCatalogDatabase.AvatarCatalogEntry(prevAvatars[extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId])
+                        {
+                            avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName
+                        };
 
                         var avatarThumbnailImageExists = IsAssetExists(avatar.thumbnailImageGuid);
 
@@ -122,7 +103,7 @@ namespace MitarashiDango.AvatarCatalog
                         if (!avatarThumbnailImageExists || withRegenerateThumbnails)
                         {
                             // サムネイル画像を新規作成または更新する
-                            var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, avatarObject);
+                            var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, extractedAvatar.AvatarRootObject);
                             try
                             {
                                 if (!string.IsNullOrEmpty(avatar.thumbnailImageGuid))
@@ -139,6 +120,7 @@ namespace MitarashiDango.AvatarCatalog
                             }
                         }
 
+                        avatarSearchIndexSources.Add(extractedAvatar.ExtractedAvatarData.GetAvatarSearchIndexSource());
                         newAvatars.Add(avatar);
                     }
                 }
@@ -152,7 +134,7 @@ namespace MitarashiDango.AvatarCatalog
             AvatarCatalogDatabase.Save(avatarCatalogDatabase);
 
             // 検索インデックスの最新化
-            RefreshIndexes(assetProductDetails);
+            RefreshIndexes(avatarSearchIndexSources);
 
             AssetDatabase.Refresh();
         }
@@ -167,83 +149,42 @@ namespace MitarashiDango.AvatarCatalog
             return !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(guid));
         }
 
-        private void RefreshIndexes(Dictionary<string, List<AssetProductDetail>> autoMatchedAssetProductDetails)
+        private void RefreshIndexes(List<AvatarSearchIndexSource> searchIndexSources)
         {
-            var avatarCatalogDatabase = AvatarCatalogDatabase.LoadOrCreateFile();
             var avatarSearchIndex = AvatarSearchIndex.LoadOrCreateFile();
+            var allAssetProductDetails = GetAllAssetProductDetails();
 
-            avatarSearchIndex.entries = avatarCatalogDatabase.avatars.Select(avatar =>
+            searchIndexSources.Select(searchIndexSource =>
             {
-                var autoMatchedAssetProductDetail = autoMatchedAssetProductDetails.GetValueOrDefault(avatar.avatarGlobalObjectId, new List<AssetProductDetail>());
-                var avatarSearchIndexEntry = new AvatarSearchIndex.AvatarSearchIndexEntry();
-                avatarSearchIndexEntry.avatarGlobalObjectId = avatar.avatarGlobalObjectId;
-                avatarSearchIndexEntry.Values = GenerateAvatarSearchIndexWords(avatar, autoMatchedAssetProductDetail);
-                return avatarSearchIndexEntry;
+                // アバターオブジェクトが参照しているアセットの製品情報を自動検出する
+                var autoMatchedAssetProductDetails = GetReferencedAssetProductDetails(searchIndexSource.dependencyPaths, allAssetProductDetails);
+
+                return new AvatarSearchIndex.AvatarSearchIndexEntry
+                {
+                    avatarGlobalObjectId = searchIndexSource.avatarGlobalObjectId,
+                    Values = GenerateAvatarSearchIndexWords(
+                      searchIndexSource, autoMatchedAssetProductDetails)
+                };
             }).ToList();
 
             AvatarSearchIndex.Save(avatarSearchIndex);
         }
 
-        public void RefreshIndexes(GlobalObjectId avatarGlobalObjectId)
+        private List<string> GenerateAvatarSearchIndexWords(AvatarSearchIndexSource searchIndexSource, IEnumerable<ExtractedAssetProductDetail> autoMatchedAssetProductDetails)
         {
-            RefreshIndexes(avatarGlobalObjectId.ToString());
-        }
+            var words = new List<string> { searchIndexSource.avatarObjectName };
+            var mergedAssetProductDetails = autoMatchedAssetProductDetails.AsEnumerable();
 
-        public void RefreshIndexes(string avatarGlobalObjectId)
-        {
-            var avatarCatalogDatabase = AvatarCatalogDatabase.LoadOrCreateFile();
-            var avatarSearchIndex = AvatarSearchIndex.LoadOrCreateFile();
-
-            var avatarCatalogDatabaseEntity = avatarCatalogDatabase.Get(avatarGlobalObjectId);
-            if (avatarCatalogDatabaseEntity == null)
+            // アバターメタデータが付与されている場合、検索対象とする
+            var avatarMetadata = searchIndexSource.avatarMetadata;
+            if (avatarMetadata != null)
             {
-                return;
-            }
+                words.Add(avatarMetadata.comment);
+                words.AddRange(avatarMetadata.tags);
 
-            List<AssetProductDetail> assetProductDetails = new List<AssetProductDetail>();
-            SceneProcessor.ProcessSceneTemporarily(avatarCatalogDatabaseEntity.sceneAsset, (scene) =>
-            {
-                var parseResult = GlobalObjectId.TryParse(avatarCatalogDatabaseEntity.avatarGlobalObjectId, out var globalObjectId);
-                if (!parseResult)
-                {
-                    return;
-                }
-
-                var targetAvatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(globalObjectId) as GameObject;
-                if (targetAvatarObject == null)
-                {
-                    return;
-                }
-
-                var apd = GetReferencedAssetProductDetails(targetAvatarObject);
-                assetProductDetails.AddRange(apd);
-            });
-
-            var avatarSearchIndexEntry = new AvatarSearchIndex.AvatarSearchIndexEntry();
-            avatarSearchIndexEntry.avatarGlobalObjectId = avatarCatalogDatabaseEntity.avatarGlobalObjectId;
-            avatarSearchIndexEntry.Values = GenerateAvatarSearchIndexWords(avatarCatalogDatabaseEntity, assetProductDetails);
-            avatarSearchIndex.Set(avatarSearchIndexEntry);
-
-            AvatarSearchIndex.Save(avatarSearchIndex);
-        }
-
-        private List<string> GenerateAvatarSearchIndexWords(AvatarCatalogDatabase.AvatarCatalogEntry avatar, IEnumerable<AssetProductDetail> assetProductDetails)
-        {
-            var words = new List<string> { avatar.avatarObjectName };
-            var mergedAssetProductDetails = assetProductDetails.AsEnumerable();
-
-            if (!string.IsNullOrEmpty(avatar.avatarMetadataGuid) && GUID.TryParse(avatar.avatarMetadataGuid, out var avatarMetadataGuid))
-            {
-                var avatarMetadata = AvatarMetadataUtil.LoadMetadata(avatarMetadataGuid);
-                if (avatarMetadata != null)
-                {
-                    words.Add(avatarMetadata.comment);
-                    words.AddRange(avatarMetadata.tags);
-
-                    mergedAssetProductDetails = avatarMetadata.assetProductDetails
-                        .Where(detail => detail != null)
-                        .Concat(assetProductDetails);
-                }
+                mergedAssetProductDetails = avatarMetadata.assetProductDetails
+                    .Where(detail => detail != null)
+                    .Concat(autoMatchedAssetProductDetails);
             }
 
             foreach (var assetProductDetail in mergedAssetProductDetails.Distinct())
@@ -278,33 +219,31 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        public IEnumerable<AssetProductDetail> GetReferencedAssetProductDetails(GameObject go)
+        private ExtractedAvatarData ExtractAvatarData(GameObject avatarRootObject)
         {
-            return GetReferencedAssetProductDetails(go, GetAllAssetProductDetails());
-        }
+            var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject);
 
-        public IEnumerable<AssetProductDetail> GetReferencedAssetProductDetails(GameObject go, IEnumerable<(AssetProductDetail assetProductDetail, string folderPath)> assetProductDetailWithFolderPaths)
-        {
-            var dependencyPaths = GetDependencyPaths(go);
-
-            return dependencyPaths
-                .SelectMany(dependencyPath => FindAssetProductDetails(dependencyPath, assetProductDetailWithFolderPaths))
-                .Distinct();
-        }
-
-        public IEnumerable<AssetProductDetail> GetReferencedAssetProductDetails(GameObject go, IEnumerable<AssetProductDetail> allAssetProductDetails)
-        {
-            var dependencyPaths = GetDependencyPaths(go);
-
-            var detailWithPaths = allAssetProductDetails
-            .Select(apd =>
+            var ead = new ExtractedAvatarData()
             {
-                var folderPath = string.IsNullOrEmpty(apd.rootFolderPath)
-                    ? Path.GetDirectoryName(AssetDatabase.GetAssetPath(apd))
-                    : apd.rootFolderPath;
-                return (apd, folderPath.Replace("\\", "/"));
-            })
-            .ToList();
+                avatarGlobalObjectId = avatarGlobalObjectId.ToString(),
+                avatarObjectName = avatarRootObject.name,
+                dependencyPaths = GetDependencyPaths(avatarRootObject).ToList(),
+            };
+
+            var avatarMetadata = avatarRootObject.GetComponent<AvatarMetadata>();
+            if (avatarMetadata != null)
+            {
+                ead.avatarMetadata = new ExtractedAvatarMetadata(avatarMetadata);
+            }
+
+            return ead;
+        }
+
+        private IEnumerable<ExtractedAssetProductDetail> GetReferencedAssetProductDetails(List<string> dependencyPaths, IEnumerable<ExtractedAssetProductDetail> allAssetProductDetails)
+        {
+            var detailWithPaths = allAssetProductDetails
+                .Select(apd => (apd, apd.rootFolderPath))
+                .ToList();
 
             return dependencyPaths
                 .SelectMany(dependencyPath => FindAssetProductDetails(dependencyPath, detailWithPaths))
@@ -338,7 +277,7 @@ namespace MitarashiDango.AvatarCatalog
             return EditorUtility.CollectDependencies(roots);
         }
 
-        private IEnumerable<AssetProductDetail> FindAssetProductDetails(string assetFilePath, IEnumerable<(AssetProductDetail assetProductDetail, string folderPath)> assetProductDetailWithFolderPaths)
+        private IEnumerable<ExtractedAssetProductDetail> FindAssetProductDetails(string assetFilePath, IEnumerable<(ExtractedAssetProductDetail assetProductDetail, string folderPath)> assetProductDetailWithFolderPaths)
         {
             // 該当するパスの中で一番深い（長い）フォルダパスを見つける
             var longestMatchFolder = assetProductDetailWithFolderPaths
@@ -350,7 +289,7 @@ namespace MitarashiDango.AvatarCatalog
 
             if (longestMatchFolder == null)
             {
-                return Enumerable.Empty<AssetProductDetail>();
+                return Enumerable.Empty<ExtractedAssetProductDetail>();
             }
 
             return assetProductDetailWithFolderPaths
@@ -383,13 +322,91 @@ namespace MitarashiDango.AvatarCatalog
             return targetFilePath.StartsWith(directoryPath, sc);
         }
 
-        private IEnumerable<AssetProductDetail> GetAllAssetProductDetails()
+        private List<ExtractedAssetProductDetail> GetAllAssetProductDetails()
         {
             return AssetDatabase.FindAssets($"t:{typeof(AssetProductDetail)}")
                 .Select(assetGuid => AssetDatabase.GUIDToAssetPath(assetGuid))
                 .Where(assetPath => !string.IsNullOrEmpty(assetPath))
                 .Select(assetPath => AssetDatabase.LoadAssetAtPath<AssetProductDetail>(assetPath))
-                .Where(asset => asset != null);
+                .Where(asset => asset != null)
+                .Select(assetProductDetail => new ExtractedAssetProductDetail(assetProductDetail))
+                .ToList();
+        }
+
+        internal class ExtractedAvatarData
+        {
+            public string avatarGlobalObjectId = "";
+            public string avatarObjectName = "";
+            public List<string> dependencyPaths = new List<string>();
+            public ExtractedAvatarMetadata avatarMetadata;
+
+            public AvatarSearchIndexSource GetAvatarSearchIndexSource()
+            {
+                return new AvatarSearchIndexSource
+                {
+                    avatarGlobalObjectId = avatarGlobalObjectId,
+                    avatarObjectName = avatarObjectName,
+                    dependencyPaths = dependencyPaths,
+                    avatarMetadata = avatarMetadata
+                };
+            }
+        }
+
+        internal class AvatarSearchIndexSource
+        {
+            public string avatarGlobalObjectId = "";
+            public string avatarObjectName = "";
+            public List<string> dependencyPaths = new List<string>();
+            public ExtractedAvatarMetadata avatarMetadata;
+        }
+
+        internal class ExtractedAvatarMetadata
+        {
+            public ExtractedAvatarMetadata(AvatarMetadata avatarMetadata)
+            {
+                comment = avatarMetadata.comment;
+                tags = avatarMetadata.tags.ToList();
+                assetProductDetails = avatarMetadata.assetProductDetails.Select(apd => new ExtractedAssetProductDetail(apd)).ToList();
+            }
+
+            public string comment = "";
+            public List<string> tags = new List<string>();
+            public List<ExtractedAssetProductDetail> assetProductDetails = new List<ExtractedAssetProductDetail>();
+        }
+
+        internal class ExtractedAssetProductDetail
+        {
+            public ExtractedAssetProductDetail(AssetProductDetail apd)
+            {
+                fileGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(apd));
+                var folderPath = string.IsNullOrEmpty(apd.rootFolderPath)
+                    ? Path.GetDirectoryName(AssetDatabase.GetAssetPath(apd))
+                    : apd.rootFolderPath;
+                rootFolderPath = folderPath.Replace("\\", "/");
+
+                productName = apd.productName;
+                creatorName = apd.creatorName;
+                productUrl = apd.productUrl;
+                releaseDateTime = apd.releaseDateTime;
+                tags = apd.tags.ToList();
+                description = apd.description;
+                licenses = apd.licenses.ToList();
+            }
+
+            public string fileGuid = "";
+            public string rootFolderPath = "";
+            public string productName;
+            public string creatorName;
+            public string productUrl;
+            public string releaseDateTime;
+            public List<string> tags;
+            public string description;
+            public List<License> licenses;
+
+            public bool Equals(ExtractedAssetProductDetail eapd)
+            {
+                return !string.IsNullOrEmpty(fileGuid) && !string.IsNullOrEmpty(eapd.fileGuid) && fileGuid == eapd.fileGuid;
+            }
         }
     }
 }

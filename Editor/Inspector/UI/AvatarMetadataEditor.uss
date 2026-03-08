@@ -12,35 +12,6 @@
     flex-shrink: 0;
 }
 
-.header {
-    margin-bottom: 5px;
-    flex-grow: 0;
-    flex-shrink: 0;
-}
-
-.header .title {
-    font-size: 14px;
-    -unity-font-style: bold;
-    margin-top: 5px;
-    margin-left: 5px;
-    margin-bottom: 5px;
-}
-
-.avatar-object-field-container {
-    flex-direction: row;
-    justify-content: space-between;
-}
-
-.avatar-object-field {
-    flex-grow: 1;
-    flex-shrink: 1;
-}
-
-.avatar-object-field-container .buttons {
-    flex-grow: 0;
-    flex-shrink: 0;
-}
-
 .field-group {
     margin-bottom: 8px;
 }

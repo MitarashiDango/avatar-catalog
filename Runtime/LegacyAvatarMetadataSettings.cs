@@ -7,6 +7,6 @@ namespace MitarashiDango.AvatarCatalog.Runtime
     [AddComponentMenu("Avatar Catalog/Avatar Metadata Settings")]
     public class AvatarMetadataSettings : MonoBehaviour, IEditorOnly
     {
-        public AvatarMetadata avatarMetadata;
+        public LegacyAvatarMetadata avatarMetadata;
     }
 }

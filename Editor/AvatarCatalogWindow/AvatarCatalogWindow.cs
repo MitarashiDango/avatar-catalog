@@ -399,9 +399,9 @@ namespace MitarashiDango.AvatarCatalog
                     AddAvatarCatalogThumbnailSettingsComponent(avatar);
                 });
 
-                e.menu.AppendAction("Edit Avatar Metadata", action =>
+                e.menu.AppendAction("Add avatar metadata component", action =>
                 {
-                    ShowAvatarMetadataEditor(avatar);
+                    AddAvatarMetadataComponent(avatar);
                 });
 
                 e.menu.AppendAction("Build and Publish avatar", async action =>
@@ -510,44 +510,6 @@ namespace MitarashiDango.AvatarCatalog
             {
                 Debug.LogError(e.Message);
             }
-        }
-
-        private void ShowAvatarMetadataEditor(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
-        {
-            var currentScenePath = SceneManager.GetActiveScene().path;
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
-
-            // ロードされていない場合は専用の確認ダイアログを出してから共通処理へ
-            if (!SceneManager.GetSceneByPath(scenePath).isLoaded)
-            {
-                if (!EditorUtility.DisplayDialog("シーン切り替え確認", $"アバター '{avatar.avatarObjectName}' のメタデータを編集するため、シーンを切り替えます。\nよろしいですか？", "はい", "いいえ"))
-                {
-                    return;
-                }
-            }
-
-            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Single, out var scene))
-            {
-                return;
-            }
-
-            if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
-            {
-                EditorSceneManager.OpenScene(currentScenePath);
-                Debug.LogError("Failed to parse GlobalObjectId");
-                return;
-            }
-
-            var avatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
-            if (avatarObject == null)
-            {
-                EditorSceneManager.OpenScene(currentScenePath);
-                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' が見つかりませんでした。", "OK");
-                Debug.LogError("failed to find avatar object");
-                return;
-            }
-
-            AvatarMetadataEditorWindow.ShowWindow(avatarObject);
         }
 
         private void BuildAvatarCatalogDatabase(bool withRegenerateThumbnails = false)
@@ -693,6 +655,38 @@ namespace MitarashiDango.AvatarCatalog
                     EditorSceneManager.CloseScene(scene, true);
                 }
             }
+        }
+
+        private void AddAvatarMetadataComponent(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        {
+            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+
+            SceneProcessor.ProcessSceneTemporarily(scenePath, (scene) =>
+            {
+                if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
+                {
+                    Debug.LogError("Failed to parse GlobalObjectId");
+                    return;
+                }
+
+                var avatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
+                if (avatarObject == null)
+                {
+                    Debug.LogError("failed to find avatar object");
+                    return;
+                }
+
+                var component = avatarObject.GetComponent<AvatarMetadata>();
+                if (component != null)
+                {
+                    return;
+                }
+
+                avatarObject.AddComponent<AvatarMetadata>();
+                EditorUtility.SetDirty(avatarObject);
+
+                EditorSceneManager.SaveScene(scene);
+            });
         }
 
         public void ReloadAvatars()
