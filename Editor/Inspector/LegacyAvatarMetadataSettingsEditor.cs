@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 namespace MitarashiDango.AvatarCatalog
 {
     [CustomEditor(typeof(AvatarMetadataSettings))]
-    public class AvatarMetadataSettingsEditor : Editor
+    public class LegacyAvatarMetadataSettingsEditor : Editor
     {
         private static readonly string _mainUxmlGuid = "d66338f5f30a861429ec54f2a9272fae";
 
