@@ -17,9 +17,8 @@ namespace MitarashiDango.AvatarCatalog
                 .Where(path => !string.IsNullOrEmpty(path));
         }
 
-        public static void WalkAllScenes(Action<SceneAsset, Scene> walkAction)
+        public static void WalkScenes(IEnumerable<string> sceneAssetPaths, Action<SceneAsset, Scene> walkAction)
         {
-            var sceneAssetPaths = GetAllSceneAssetPaths();
             foreach (var sceneAssetPath in sceneAssetPaths)
             {
                 var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(sceneAssetPath);

@@ -36,7 +36,7 @@ namespace MitarashiDango.AvatarCatalog
         private string _searchText = "";
         private float _gridItemSize = Preferences.DefaultAvatarCatalogMaxItemSize;
         private AvatarSearchIndex _avatarSearchIndex = null;
-        private AvatarCatalogDatabase _avatarCatalogDatabase = null;
+        private AvatarDatabase _avatarCatalogDatabase = null;
         private Preferences _preferences;
 
         [MenuItem("Tools/Avatar Catalog/Avatar List")]
@@ -48,7 +48,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnEnable()
         {
-            _avatarCatalogDatabase = AvatarCatalogDatabase.Load();
+            _avatarCatalogDatabase = AvatarDatabase.Load();
             _avatarSearchIndex = AvatarSearchIndex.Load();
             _preferences = Preferences.Load();
 
@@ -82,7 +82,7 @@ namespace MitarashiDango.AvatarCatalog
             return scene.IsValid() && scene.isLoaded;
         }
 
-        private GameObject ChangeSelectingObject(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private GameObject ChangeSelectingObject(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
             if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
             {
@@ -90,7 +90,7 @@ namespace MitarashiDango.AvatarCatalog
                 return null;
             }
 
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
             if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Single, out var scene))
             {
@@ -334,7 +334,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private Texture2D LoadAvatarThumbnailImage(AvatarCatalogDatabase.AvatarCatalogEntry entry)
+        private Texture2D LoadAvatarThumbnailImage(AvatarDatabase.AvatarDatabaseEntry entry)
         {
             if (string.IsNullOrEmpty(entry.thumbnailImageGuid))
             {
@@ -355,7 +355,7 @@ namespace MitarashiDango.AvatarCatalog
             return null;
         }
 
-        private List<AvatarCatalogDatabase.AvatarCatalogEntry> FilterAvatars(List<AvatarCatalogDatabase.AvatarCatalogEntry> avatars, string searchText)
+        private List<AvatarDatabase.AvatarDatabaseEntry> FilterAvatars(List<AvatarDatabase.AvatarDatabaseEntry> avatars, string searchText)
         {
             var result = avatars;
 
@@ -370,7 +370,7 @@ namespace MitarashiDango.AvatarCatalog
                 var avatarGlobalObjectIds = _avatarSearchIndex.GetGlobalObjectIds(searchWords);
                 if (avatarGlobalObjectIds.Count == 0)
                 {
-                    return new List<AvatarCatalogDatabase.AvatarCatalogEntry>();
+                    return new List<AvatarDatabase.AvatarDatabaseEntry>();
                 }
 
                 result = result.Where(avatar => avatarGlobalObjectIds.Exists(id => id == avatar.avatarGlobalObjectId)).ToList();
@@ -379,7 +379,7 @@ namespace MitarashiDango.AvatarCatalog
             return result;
         }
 
-        private ContextualMenuManipulator GetAvatarCatalogItemContextualMenu(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private ContextualMenuManipulator GetAvatarCatalogItemContextualMenu(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
             var manipulator = new ContextualMenuManipulator(e =>
             {
@@ -413,7 +413,7 @@ namespace MitarashiDango.AvatarCatalog
             return manipulator;
         }
 
-        private async Task BuildAndPublishAvatar(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private async Task BuildAndPublishAvatar(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
             ChangeToActiveAvatar(avatar);
 
@@ -517,7 +517,7 @@ namespace MitarashiDango.AvatarCatalog
             var databaseBuilder = new DatabaseBuilder();
             databaseBuilder.BuildAvatarCatalogDatabaseAndIndexes(withRegenerateThumbnails);
 
-            _avatarCatalogDatabase = AvatarCatalogDatabase.Load();
+            _avatarCatalogDatabase = AvatarDatabase.Load();
             _avatarSearchIndex = AvatarSearchIndex.Load();
         }
 
@@ -527,7 +527,7 @@ namespace MitarashiDango.AvatarCatalog
             UpdateGridLayout();
         }
 
-        private void ChangeToActiveAvatar(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private void ChangeToActiveAvatar(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
@@ -543,9 +543,9 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void GenerateAvatarThumbnail(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private void GenerateAvatarThumbnail(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
             // Additiveでロード
             if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Additive, out var scene))
@@ -577,7 +577,7 @@ namespace MitarashiDango.AvatarCatalog
                     return;
                 }
 
-                var avatarCatalogDatabaseEntry = _avatarCatalogDatabase.Get(avatar.avatarGlobalObjectId);
+                var avatarCatalogDatabaseEntry = _avatarCatalogDatabase.avatars.FirstOrDefault(a => a.avatarGlobalObjectId == avatar.avatarGlobalObjectId);
                 if (avatarCatalogDatabaseEntry != null)
                 {
                     var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, targetAvatarObject);
@@ -600,7 +600,7 @@ namespace MitarashiDango.AvatarCatalog
                     }
                 }
 
-                AvatarCatalogDatabase.Save(_avatarCatalogDatabase);
+                AvatarDatabase.Save(_avatarCatalogDatabase);
                 AssetDatabase.Refresh();
             }
             finally
@@ -612,9 +612,9 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void AddAvatarCatalogThumbnailSettingsComponent(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private void AddAvatarCatalogThumbnailSettingsComponent(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
             // Additiveでロード
             if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Additive, out var scene))
@@ -657,9 +657,9 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        private void AddAvatarMetadataComponent(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private void AddAvatarMetadataComponent(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
             SceneProcessor.ProcessSceneTemporarily(scenePath, (scene) =>
             {
@@ -692,7 +692,7 @@ namespace MitarashiDango.AvatarCatalog
         public void ReloadAvatars()
         {
             Preferences.Load();
-            _avatarCatalogDatabase = AvatarCatalogDatabase.Load();
+            _avatarCatalogDatabase = AvatarDatabase.Load();
             _avatarSearchIndex = AvatarSearchIndex.Load();
 
             UpdateGridLayout();
@@ -701,7 +701,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void UpdateViews()
         {
-            if (AvatarCatalogDatabase.IsDatabaseFileExists())
+            if (AvatarDatabase.IsDatabaseFileExists())
             {
                 ShowAvatarListView();
                 return;
@@ -719,7 +719,7 @@ namespace MitarashiDango.AvatarCatalog
             UpdateGridLayout();
         }
 
-        private void OnAvatarItemClick(ClickEvent e, AvatarCatalogDatabase.AvatarCatalogEntry avatar)
+        private void OnAvatarItemClick(ClickEvent e, AvatarDatabase.AvatarDatabaseEntry avatar)
         {
             if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
             {
