@@ -28,9 +28,9 @@ namespace MitarashiDango.AvatarCatalog
             FolderUtil.CreateCacheFolder();
             FolderUtil.CreateAvatarThumbnailsCacheFolder();
 
-            var avatarCatalogDatabase = AvatarCatalogDatabase.LoadOrCreateFile();
+            var avatarCatalogDatabase = AvatarDatabase.LoadOrCreateFile();
 
-            var prevAvatars = avatarCatalogDatabase.GetMappedAvatarCatalogEntries();
+            var previousAvatarDatabaseEntries = avatarCatalogDatabase.GetMappedAvatarCatalogEntries();
 
             var avatarDatabaseSources = new List<AvatarDatabaseSource>();
 
@@ -53,7 +53,7 @@ namespace MitarashiDango.AvatarCatalog
 
                 foreach (var extractedAvatar in extractedAvatars)
                 {
-                    if (!prevAvatars.ContainsKey(extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId))
+                    if (!previousAvatarDatabaseEntries.ContainsKey(extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId))
                     {
                         // 未追加のアバター
                         var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, extractedAvatar.AvatarRootObject);
@@ -75,7 +75,7 @@ namespace MitarashiDango.AvatarCatalog
                     else
                     {
                         // 既知のアバター情報の更新
-                        var previousAvatarEntry = prevAvatars[extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId];
+                        var previousAvatarEntry = previousAvatarDatabaseEntries[extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId];
 
                         var avatarDatabaseSource = new AvatarDatabaseSource()
                         {
@@ -128,13 +128,13 @@ namespace MitarashiDango.AvatarCatalog
             });
 
             // 不要となったファイルの削除
-            CleanupFiles(prevAvatars, avatarDatabaseSources);
+            CleanupFiles(previousAvatarDatabaseEntries, avatarDatabaseSources);
 
             avatarCatalogDatabase.avatars = avatarDatabaseSources
-                .Select(source => source.GetAvatarCatalogEntry())
+                .Select(source => source.GetAvatarDatabaseEntry())
                 .ToList();
 
-            AvatarCatalogDatabase.Save(avatarCatalogDatabase);
+            AvatarDatabase.Save(avatarCatalogDatabase);
 
             // 検索インデックスの最新化
             RefreshIndexes(avatarDatabaseSources.Select(source => source.GetAvatarSearchIndexSource()));
@@ -204,10 +204,10 @@ namespace MitarashiDango.AvatarCatalog
             return words.Distinct().ToList();
         }
 
-        private void CleanupFiles(Dictionary<string, AvatarCatalogDatabase.AvatarCatalogEntry> prevAvatars, List<AvatarDatabaseSource> avatarDatabaseSources)
+        private void CleanupFiles(Dictionary<string, AvatarDatabase.AvatarDatabaseEntry> previousAvatarEntries, List<AvatarDatabaseSource> avatarDatabaseSources)
         {
             var newAvatarGlobalObjectIds = avatarDatabaseSources.Select(avatar => avatar.avatarGlobalObjectId);
-            var removedAvatars = prevAvatars.Values.Where(prevAvatar => !newAvatarGlobalObjectIds.Contains(prevAvatar.avatarGlobalObjectId));
+            var removedAvatars = previousAvatarEntries.Values.Where(prevAvatar => !newAvatarGlobalObjectIds.Contains(prevAvatar.avatarGlobalObjectId));
             foreach (var removedAvatar in removedAvatars)
             {
                 // サムネイル画像の削除
@@ -359,9 +359,9 @@ namespace MitarashiDango.AvatarCatalog
                 };
             }
 
-            public AvatarCatalogDatabase.AvatarCatalogEntry GetAvatarCatalogEntry()
+            public AvatarDatabase.AvatarDatabaseEntry GetAvatarDatabaseEntry()
             {
-                return new AvatarCatalogDatabase.AvatarCatalogEntry
+                return new AvatarDatabase.AvatarDatabaseEntry
                 {
                     avatarGlobalObjectId = avatarGlobalObjectId,
                     avatarObjectName = avatarObjectName,

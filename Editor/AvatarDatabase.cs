@@ -7,14 +7,14 @@ using UnityEngine;
 namespace MitarashiDango.AvatarCatalog
 {
     [Serializable]
-    public class AvatarCatalogDatabase : ScriptableObject
+    public class AvatarDatabase : ScriptableObject
     {
-        public static readonly string AssetFilePath = "Assets/Avatar Catalog User Data/AvatarCatalogDatabase.asset";
+        public static readonly string AssetFilePath = "Assets/Avatar Catalog User Data/AvatarDatabase.asset";
 
         [SerializeField]
-        private List<AvatarCatalogEntry> _avatars = new List<AvatarCatalogEntry>();
+        private List<AvatarDatabaseEntry> _avatars = new List<AvatarDatabaseEntry>();
 
-        public List<AvatarCatalogEntry> avatars
+        public List<AvatarDatabaseEntry> avatars
         {
             get => _avatars;
             set
@@ -39,7 +39,7 @@ namespace MitarashiDango.AvatarCatalog
             return _avatars.Exists(a => a.avatarGlobalObjectId == avatarGlobalObjectId);
         }
 
-        public void Set(AvatarCatalogEntry entry)
+        public void Set(AvatarDatabaseEntry entry)
         {
             var index = avatars.FindIndex(t => t.avatarGlobalObjectId == entry.avatarGlobalObjectId);
             if (index != -1)
@@ -54,24 +54,24 @@ namespace MitarashiDango.AvatarCatalog
             EditorUtility.SetDirty(this);
         }
 
-        public AvatarCatalogEntry Get(GameObject avatarRootObject)
+        public AvatarDatabaseEntry Get(GameObject avatarRootObject)
         {
             return Get(GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject));
         }
 
-        public AvatarCatalogEntry Get(GlobalObjectId avatarGlobalObjectId)
+        public AvatarDatabaseEntry Get(GlobalObjectId avatarGlobalObjectId)
         {
             return Get(avatarGlobalObjectId.ToString());
         }
 
-        public AvatarCatalogEntry Get(string avatarGlobalObjectId)
+        public AvatarDatabaseEntry Get(string avatarGlobalObjectId)
         {
-            return _avatars.Where(a => a.avatarGlobalObjectId == avatarGlobalObjectId).FirstOrDefault();
+            return _avatars.FirstOrDefault(a => a.avatarGlobalObjectId == avatarGlobalObjectId);
         }
 
-        public Dictionary<string, AvatarCatalogEntry> GetMappedAvatarCatalogEntries()
+        public Dictionary<string, AvatarDatabaseEntry> GetMappedAvatarCatalogEntries()
         {
-            var dic = new Dictionary<string, AvatarCatalogEntry>();
+            var dic = new Dictionary<string, AvatarDatabaseEntry>();
 
             foreach (var entry in avatars)
             {
@@ -81,13 +81,13 @@ namespace MitarashiDango.AvatarCatalog
             return dic;
         }
 
-        public static void Save(AvatarCatalogDatabase asset)
+        public static void Save(AvatarDatabase asset)
         {
             EditorUtility.SetDirty(asset);
             AssetDatabase.SaveAssetIfDirty(asset);
         }
 
-        public static AvatarCatalogDatabase LoadOrCreateFile()
+        public static AvatarDatabase LoadOrCreateFile()
         {
             var asset = Load();
             if (asset != null)
@@ -98,15 +98,15 @@ namespace MitarashiDango.AvatarCatalog
             // フォルダー作成
             FolderUtil.CreateUserDataFolder();
 
-            asset = CreateInstance<AvatarCatalogDatabase>();
+            asset = CreateInstance<AvatarDatabase>();
             AssetDatabase.CreateAsset(asset, AssetFilePath);
 
             return asset;
         }
 
-        public static AvatarCatalogDatabase Load()
+        public static AvatarDatabase Load()
         {
-            var asset = AssetDatabase.LoadAssetAtPath<AvatarCatalogDatabase>(AssetFilePath);
+            var asset = AssetDatabase.LoadAssetAtPath<AvatarDatabase>(AssetFilePath);
             if (asset != null)
             {
                 return asset;
@@ -117,22 +117,22 @@ namespace MitarashiDango.AvatarCatalog
 
         public static bool IsDatabaseFileExists()
         {
-            return AssetDatabase.LoadAssetAtPath<AvatarCatalogDatabase>(AssetFilePath) != null;
+            return AssetDatabase.LoadAssetAtPath<AvatarDatabase>(AssetFilePath) != null;
         }
 
         [Serializable]
-        public class AvatarCatalogEntry
+        public class AvatarDatabaseEntry
         {
             public string avatarGlobalObjectId;
             public string avatarObjectName;
             public string sceneAssetGuid;
             public string thumbnailImageGuid = "";
 
-            public AvatarCatalogEntry()
+            public AvatarDatabaseEntry()
             {
             }
 
-            public AvatarCatalogEntry(AvatarCatalogEntry ace)
+            public AvatarDatabaseEntry(AvatarDatabaseEntry ace)
             {
                 avatarGlobalObjectId = ace.avatarGlobalObjectId;
                 avatarObjectName = ace.avatarObjectName;
