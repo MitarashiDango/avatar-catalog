@@ -4,7 +4,7 @@ using UnityEngine;
 namespace MitarashiDango.AvatarCatalog.Runtime
 {
     [CreateAssetMenu(menuName = "Avatar Catalog/Avatar Metadata")]
-    public class AvatarMetadata : ScriptableObject
+    public class LegacyAvatarMetadata : ScriptableObject
     {
         /// <summary>
         /// メタデータが紐付いているアバターオブジェクトのグローバルオブジェクトID

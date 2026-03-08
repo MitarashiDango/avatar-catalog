@@ -56,7 +56,7 @@ namespace MitarashiDango.AvatarCatalog
             _syncAvatarGlobalIdButton.RegisterCallback<ClickEvent>(OnSyncAvatarGlobalIdButtonClick);
             _copyAvatarMetadataFileButton.RegisterCallback<ClickEvent>(OnCopyAvatarMetadataFileButtonClick);
 
-            if (IsLinkedAvatarObjectDifferent(_avatarMetadataProperty.objectReferenceValue as AvatarMetadata))
+            if (IsLinkedAvatarObjectDifferent(_avatarMetadataProperty.objectReferenceValue as LegacyAvatarMetadata))
             {
                 ShowFilenameMismatchUI();
             }
@@ -98,7 +98,7 @@ namespace MitarashiDango.AvatarCatalog
             _copyAvatarMetadataFileButton.style.display = DisplayStyle.None;
         }
 
-        private bool IsLinkedAvatarObjectDifferent(AvatarMetadata avatarMetadata)
+        private bool IsLinkedAvatarObjectDifferent(LegacyAvatarMetadata avatarMetadata)
         {
             if (avatarMetadata == null)
             {
@@ -124,7 +124,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnAvatarMetadataObjectFieldChanged(ChangeEvent<Object> evt)
         {
-            var newAvatarMetadata = evt.newValue as AvatarMetadata;
+            var newAvatarMetadata = evt.newValue as LegacyAvatarMetadata;
 
             if (IsLinkedAvatarObjectDifferent(newAvatarMetadata))
             {
@@ -138,7 +138,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnSyncAvatarGlobalIdButtonClick(ClickEvent evt)
         {
-            var avatarMetadata = _avatarMetadataProperty.objectReferenceValue as AvatarMetadata;
+            var avatarMetadata = _avatarMetadataProperty.objectReferenceValue as LegacyAvatarMetadata;
             if (avatarMetadata == null)
             {
                 Debug.LogError("AvatarMetadata is not assigned.");
@@ -167,7 +167,7 @@ namespace MitarashiDango.AvatarCatalog
             var avatarMetadataSettings = (AvatarMetadataSettings)target;
 
             // 複製対象のアバターメタデータ
-            var avatarMetadata = _avatarMetadataProperty.objectReferenceValue as AvatarMetadata;
+            var avatarMetadata = _avatarMetadataProperty.objectReferenceValue as LegacyAvatarMetadata;
             if (avatarMetadata == null)
             {
                 Debug.LogError("AvatarMetadata is not assigned.");
@@ -190,7 +190,7 @@ namespace MitarashiDango.AvatarCatalog
             AssetDatabase.RenameAsset(newFilePath, fileGuid);
             newFilePath = AssetDatabase.GUIDToAssetPath(fileGuid);
 
-            var copiedAsset = AssetDatabase.LoadAssetAtPath<AvatarMetadata>(newFilePath);
+            var copiedAsset = AssetDatabase.LoadAssetAtPath<LegacyAvatarMetadata>(newFilePath);
 
             var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(avatarMetadataSettings.gameObject);
             copiedAsset.avatarGlobalObjectId = avatarGlobalObjectId.ToString();

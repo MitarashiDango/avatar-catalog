@@ -227,7 +227,7 @@ namespace MitarashiDango.AvatarCatalog
             AssetDatabase.RenameAsset(newFilePath, fileGuid);
             newFilePath = AssetDatabase.GUIDToAssetPath(fileGuid);
 
-            var copiedAsset = AssetDatabase.LoadAssetAtPath<AvatarMetadata>(newFilePath);
+            var copiedAsset = AssetDatabase.LoadAssetAtPath<LegacyAvatarMetadata>(newFilePath);
 
             var avatarGlobalObjectId = GlobalObjectId.GetGlobalObjectIdSlow(_currentTargetAvatar);
             copiedAsset.avatarGlobalObjectId = avatarGlobalObjectId.ToString();
@@ -398,7 +398,7 @@ namespace MitarashiDango.AvatarCatalog
             HideFilenameMismatchUI();
         }
 
-        private void SetMetadata(AvatarMetadata avatarMetadata)
+        private void SetMetadata(LegacyAvatarMetadata avatarMetadata)
         {
             rootVisualElement.Unbind();
             if (avatarMetadata != null)

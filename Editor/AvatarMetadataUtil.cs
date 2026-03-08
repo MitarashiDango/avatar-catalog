@@ -24,7 +24,7 @@ namespace MitarashiDango.AvatarCatalog
         /// </summary>
         /// <param name="avatarRootObject">対象のアバターオブジェクト</param>
         /// <returns>ロードされたアバターメタデータを返却する。GlobalObjectId が無効な場合は null を返却する。</returns>
-        public static AvatarMetadata LoadMetadata(GameObject avatarRootObject)
+        public static LegacyAvatarMetadata LoadMetadata(GameObject avatarRootObject)
         {
             if (avatarRootObject == null)
             {
@@ -48,7 +48,7 @@ namespace MitarashiDango.AvatarCatalog
         /// </summary>
         /// <param name="avatarMetadataGuid">アバターメタデータファイルのGUID</param>
         /// <returns>ロードされたアバターメタデータを返却する。ロード出来なかった場合は null を返却する。</returns>
-        public static AvatarMetadata LoadMetadata(GUID avatarMetadataGuid)
+        public static LegacyAvatarMetadata LoadMetadata(GUID avatarMetadataGuid)
         {
             if (avatarMetadataGuid.Empty())
             {
@@ -61,14 +61,14 @@ namespace MitarashiDango.AvatarCatalog
                 return null;
             }
 
-            return AssetDatabase.LoadAssetAtPath<AvatarMetadata>(filePath);
+            return AssetDatabase.LoadAssetAtPath<LegacyAvatarMetadata>(filePath);
         }
 
         /// <summary>
         /// アバターメタデータへの変更を保存します
         /// </summary>
         /// <param name="metadata">保存するアバターメタデータ</param>
-        public static void SaveMetadata(AvatarMetadata metadata)
+        public static void SaveMetadata(LegacyAvatarMetadata metadata)
         {
             if (metadata != null)
             {
@@ -81,7 +81,7 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
-        public static AvatarMetadata CreateMetadata(GameObject avatarRootObject)
+        public static LegacyAvatarMetadata CreateMetadata(GameObject avatarRootObject)
         {
             if (avatarRootObject == null)
             {
@@ -107,7 +107,7 @@ namespace MitarashiDango.AvatarCatalog
                 return avatarMetadataSettings.avatarMetadata;
             }
 
-            AvatarMetadata newMetadata = ScriptableObject.CreateInstance<AvatarMetadata>();
+            LegacyAvatarMetadata newMetadata = ScriptableObject.CreateInstance<LegacyAvatarMetadata>();
             newMetadata.comment = "";
             newMetadata.tags = new List<string>();
 
@@ -173,7 +173,7 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             // アセットが存在するかどうかで判断
-            if (AssetDatabase.LoadAssetAtPath<AvatarMetadata>(metadataPath) == null)
+            if (AssetDatabase.LoadAssetAtPath<LegacyAvatarMetadata>(metadataPath) == null)
             {
                 Debug.LogWarning($"Metadata not found for {avatarRootObject.name} at {metadataPath}. Cannot delete.");
                 return false;
@@ -225,7 +225,7 @@ namespace MitarashiDango.AvatarCatalog
             return true;
         }
 
-        public static void RenameToGuid(AvatarMetadata avatarMetadata)
+        public static void RenameToGuid(LegacyAvatarMetadata avatarMetadata)
         {
             var filePath = AssetDatabase.GetAssetPath(avatarMetadata);
             if (string.IsNullOrEmpty(filePath))
