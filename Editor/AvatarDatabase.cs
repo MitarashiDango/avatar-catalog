@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -11,63 +10,9 @@ namespace MitarashiDango.AvatarCatalog
     {
         public static readonly string AssetFilePath = "Assets/Avatar Catalog User Data/AvatarDatabase.asset";
 
-        [SerializeField]
-        private List<AvatarDatabaseEntry> _avatars = new List<AvatarDatabaseEntry>();
+        public List<SceneEntry> orderedScenes = new List<SceneEntry>();
 
-        public List<AvatarDatabaseEntry> avatars
-        {
-            get => _avatars;
-            set
-            {
-                _avatars = value;
-                EditorUtility.SetDirty(this);
-            }
-        }
-
-        public bool IsExists(GameObject avatarRootObject)
-        {
-            return IsExists(GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject));
-        }
-
-        public bool IsExists(GlobalObjectId avatarGlobalObjectId)
-        {
-            return IsExists(avatarGlobalObjectId.ToString());
-        }
-
-        public bool IsExists(string avatarGlobalObjectId)
-        {
-            return _avatars.Exists(a => a.avatarGlobalObjectId == avatarGlobalObjectId);
-        }
-
-        public void Set(AvatarDatabaseEntry entry)
-        {
-            var index = avatars.FindIndex(t => t.avatarGlobalObjectId == entry.avatarGlobalObjectId);
-            if (index != -1)
-            {
-                avatars[index] = entry;
-            }
-            else
-            {
-                avatars.Add(entry);
-            }
-
-            EditorUtility.SetDirty(this);
-        }
-
-        public AvatarDatabaseEntry Get(GameObject avatarRootObject)
-        {
-            return Get(GlobalObjectId.GetGlobalObjectIdSlow(avatarRootObject));
-        }
-
-        public AvatarDatabaseEntry Get(GlobalObjectId avatarGlobalObjectId)
-        {
-            return Get(avatarGlobalObjectId.ToString());
-        }
-
-        public AvatarDatabaseEntry Get(string avatarGlobalObjectId)
-        {
-            return _avatars.FirstOrDefault(a => a.avatarGlobalObjectId == avatarGlobalObjectId);
-        }
+        public List<AvatarDatabaseEntry> avatars = new List<AvatarDatabaseEntry>();
 
         public Dictionary<string, AvatarDatabaseEntry> GetMappedAvatarCatalogEntries()
         {
@@ -118,6 +63,13 @@ namespace MitarashiDango.AvatarCatalog
         public static bool IsDatabaseFileExists()
         {
             return AssetDatabase.LoadAssetAtPath<AvatarDatabase>(AssetFilePath) != null;
+        }
+
+        [Serializable]
+        public class SceneEntry
+        {
+            public string sceneName = "";
+            public string sceneAssetGuid = "";
         }
 
         [Serializable]

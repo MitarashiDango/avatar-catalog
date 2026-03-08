@@ -32,12 +32,21 @@ namespace MitarashiDango.AvatarCatalog
 
             var previousAvatarDatabaseEntries = avatarCatalogDatabase.GetMappedAvatarCatalogEntries();
 
+            var sceneEntries = new List<AvatarDatabase.SceneEntry>();
             var avatarDatabaseSources = new List<AvatarDatabaseSource>();
 
             using var avatarRenderer = new AvatarRenderer();
 
-            SceneProcessor.WalkAllScenes((sceneAsset, currentScene) =>
+            var allSceneAssetPaths = SceneProcessor.GetAllSceneAssetPaths();
+
+            SceneProcessor.WalkScenes(allSceneAssetPaths, (sceneAsset, currentScene) =>
             {
+                sceneEntries.Add(new AvatarDatabase.SceneEntry()
+                {
+                    sceneName = sceneAsset.name,
+                    sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
+                });
+
                 var currentSceneRootObjects = currentScene.GetRootGameObjects();
 
                 var extractedAvatars = currentSceneRootObjects
@@ -130,6 +139,7 @@ namespace MitarashiDango.AvatarCatalog
             // 不要となったファイルの削除
             CleanupFiles(previousAvatarDatabaseEntries, avatarDatabaseSources);
 
+            avatarCatalogDatabase.orderedScenes = sceneEntries;
             avatarCatalogDatabase.avatars = avatarDatabaseSources
                 .Select(source => source.GetAvatarDatabaseEntry())
                 .ToList();

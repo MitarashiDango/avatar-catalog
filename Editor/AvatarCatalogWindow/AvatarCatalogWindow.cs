@@ -577,7 +577,7 @@ namespace MitarashiDango.AvatarCatalog
                     return;
                 }
 
-                var avatarCatalogDatabaseEntry = _avatarCatalogDatabase.Get(avatar.avatarGlobalObjectId);
+                var avatarCatalogDatabaseEntry = _avatarCatalogDatabase.avatars.FirstOrDefault(a => a.avatarGlobalObjectId == avatar.avatarGlobalObjectId);
                 if (avatarCatalogDatabaseEntry != null)
                 {
                     var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, targetAvatarObject);
