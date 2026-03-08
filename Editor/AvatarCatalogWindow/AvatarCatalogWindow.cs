@@ -90,7 +90,7 @@ namespace MitarashiDango.AvatarCatalog
                 return null;
             }
 
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
             if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Single, out var scene))
             {
@@ -545,7 +545,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void GenerateAvatarThumbnail(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
             // Additiveでロード
             if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Additive, out var scene))
@@ -614,7 +614,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void AddAvatarCatalogThumbnailSettingsComponent(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
             // Additiveでロード
             if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Additive, out var scene))
@@ -659,7 +659,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void AddAvatarMetadataComponent(AvatarCatalogDatabase.AvatarCatalogEntry avatar)
         {
-            var scenePath = AssetDatabase.GetAssetPath(avatar.sceneAsset);
+            var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
             SceneProcessor.ProcessSceneTemporarily(scenePath, (scene) =>
             {

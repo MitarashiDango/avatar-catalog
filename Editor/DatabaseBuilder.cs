@@ -31,9 +31,8 @@ namespace MitarashiDango.AvatarCatalog
             var avatarCatalogDatabase = AvatarCatalogDatabase.LoadOrCreateFile();
 
             var prevAvatars = avatarCatalogDatabase.GetMappedAvatarCatalogEntries();
-            var newAvatars = new List<AvatarCatalogDatabase.AvatarCatalogEntry>();
 
-            var avatarSearchIndexSources = new List<AvatarSearchIndexSource>();
+            var avatarDatabaseSources = new List<AvatarDatabaseSource>();
 
             using var avatarRenderer = new AvatarRenderer();
 
@@ -60,15 +59,13 @@ namespace MitarashiDango.AvatarCatalog
                         var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, extractedAvatar.AvatarRootObject);
                         try
                         {
-                            newAvatars.Add(new AvatarCatalogDatabase.AvatarCatalogEntry()
+                            avatarDatabaseSources.Add(new AvatarDatabaseSource()
                             {
                                 avatarGlobalObjectId = extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId,
                                 avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
-                                sceneAsset = sceneAsset,
+                                sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
                                 thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString(),
                             });
-
-                            avatarSearchIndexSources.Add(extractedAvatar.ExtractedAvatarData.GetAvatarSearchIndexSource());
                         }
                         finally
                         {
@@ -78,14 +75,19 @@ namespace MitarashiDango.AvatarCatalog
                     else
                     {
                         // 既知のアバター情報の更新
-                        var avatar = new AvatarCatalogDatabase.AvatarCatalogEntry(prevAvatars[extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId])
+                        var previousAvatarEntry = prevAvatars[extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId];
+
+                        var avatarDatabaseSource = new AvatarDatabaseSource()
                         {
-                            avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName
+                            avatarGlobalObjectId = previousAvatarEntry.avatarGlobalObjectId,
+                            avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
+                            sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
+                            thumbnailImageGuid = previousAvatarEntry.thumbnailImageGuid,
                         };
 
-                        var avatarThumbnailImageExists = IsAssetExists(avatar.thumbnailImageGuid);
+                        var avatarThumbnailImageExists = IsAssetFileExists(avatarDatabaseSource.thumbnailImageGuid);
 
-                        if (avatarThumbnailImageExists && GUID.TryParse(avatar.thumbnailImageGuid, out var thumbnailImageGuid))
+                        if (avatarThumbnailImageExists && GUID.TryParse(avatarDatabaseSource.thumbnailImageGuid, out var thumbnailImageGuid))
                         {
                             // 既存のアバターサムネイル画像に対する処理
                             if (withRegenerateThumbnails)
@@ -106,13 +108,13 @@ namespace MitarashiDango.AvatarCatalog
                             var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, extractedAvatar.AvatarRootObject);
                             try
                             {
-                                if (!string.IsNullOrEmpty(avatar.thumbnailImageGuid))
+                                if (!string.IsNullOrEmpty(avatarDatabaseSource.thumbnailImageGuid))
                                 {
-                                    AvatarThumbnailUtil.DeleteAvatarThumbnailImage(avatar.thumbnailImageGuid);
-                                    avatar.thumbnailImageGuid = "";
+                                    AvatarThumbnailUtil.DeleteAvatarThumbnailImage(avatarDatabaseSource.thumbnailImageGuid);
+                                    avatarDatabaseSource.thumbnailImageGuid = "";
                                 }
 
-                                avatar.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
+                                avatarDatabaseSource.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
                             }
                             finally
                             {
@@ -120,26 +122,27 @@ namespace MitarashiDango.AvatarCatalog
                             }
                         }
 
-                        avatarSearchIndexSources.Add(extractedAvatar.ExtractedAvatarData.GetAvatarSearchIndexSource());
-                        newAvatars.Add(avatar);
+                        avatarDatabaseSources.Add(avatarDatabaseSource);
                     }
                 }
             });
 
             // 不要となったファイルの削除
-            CleanupFiles(prevAvatars, newAvatars);
+            CleanupFiles(prevAvatars, avatarDatabaseSources);
 
-            avatarCatalogDatabase.avatars = newAvatars;
+            avatarCatalogDatabase.avatars = avatarDatabaseSources
+                .Select(source => source.GetAvatarCatalogEntry())
+                .ToList();
 
             AvatarCatalogDatabase.Save(avatarCatalogDatabase);
 
             // 検索インデックスの最新化
-            RefreshIndexes(avatarSearchIndexSources);
+            RefreshIndexes(avatarDatabaseSources.Select(source => source.GetAvatarSearchIndexSource()));
 
             AssetDatabase.Refresh();
         }
 
-        private bool IsAssetExists(string guid)
+        private bool IsAssetFileExists(string guid)
         {
             if (string.IsNullOrEmpty(guid))
             {
@@ -149,7 +152,7 @@ namespace MitarashiDango.AvatarCatalog
             return !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(guid));
         }
 
-        private void RefreshIndexes(List<AvatarSearchIndexSource> searchIndexSources)
+        private void RefreshIndexes(IEnumerable<AvatarSearchIndexSource> searchIndexSources)
         {
             var avatarSearchIndex = AvatarSearchIndex.LoadOrCreateFile();
             var allAssetProductDetails = GetAllAssetProductDetails();
@@ -201,9 +204,9 @@ namespace MitarashiDango.AvatarCatalog
             return words.Distinct().ToList();
         }
 
-        private void CleanupFiles(Dictionary<string, AvatarCatalogDatabase.AvatarCatalogEntry> prevAvatars, List<AvatarCatalogDatabase.AvatarCatalogEntry> newAvatars)
+        private void CleanupFiles(Dictionary<string, AvatarCatalogDatabase.AvatarCatalogEntry> prevAvatars, List<AvatarDatabaseSource> avatarDatabaseSources)
         {
-            var newAvatarGlobalObjectIds = newAvatars.Select(avatar => avatar.avatarGlobalObjectId);
+            var newAvatarGlobalObjectIds = avatarDatabaseSources.Select(avatar => avatar.avatarGlobalObjectId);
             var removedAvatars = prevAvatars.Values.Where(prevAvatar => !newAvatarGlobalObjectIds.Contains(prevAvatar.avatarGlobalObjectId));
             foreach (var removedAvatar in removedAvatars)
             {
@@ -239,17 +242,6 @@ namespace MitarashiDango.AvatarCatalog
             return ead;
         }
 
-        private IEnumerable<ExtractedAssetProductDetail> GetReferencedAssetProductDetails(List<string> dependencyPaths, IEnumerable<ExtractedAssetProductDetail> allAssetProductDetails)
-        {
-            var detailWithPaths = allAssetProductDetails
-                .Select(apd => (apd, apd.rootFolderPath))
-                .ToList();
-
-            return dependencyPaths
-                .SelectMany(dependencyPath => FindAssetProductDetails(dependencyPath, detailWithPaths))
-                .Distinct();
-        }
-
         private IEnumerable<string> GetDependencyPaths(GameObject go)
         {
             var dependencies = GetDependencies(go);
@@ -277,11 +269,18 @@ namespace MitarashiDango.AvatarCatalog
             return EditorUtility.CollectDependencies(roots);
         }
 
-        private IEnumerable<ExtractedAssetProductDetail> FindAssetProductDetails(string assetFilePath, IEnumerable<(ExtractedAssetProductDetail assetProductDetail, string folderPath)> assetProductDetailWithFolderPaths)
+        private IEnumerable<ExtractedAssetProductDetail> GetReferencedAssetProductDetails(List<string> dependencyPaths, IEnumerable<ExtractedAssetProductDetail> allAssetProductDetails)
+        {
+            return dependencyPaths
+                .SelectMany(dependencyPath => FindAssetProductDetails(dependencyPath, allAssetProductDetails))
+                .Distinct();
+        }
+
+        private IEnumerable<ExtractedAssetProductDetail> FindAssetProductDetails(string assetFilePath, IEnumerable<ExtractedAssetProductDetail> allAssetProductDetails)
         {
             // 該当するパスの中で一番深い（長い）フォルダパスを見つける
-            var longestMatchFolder = assetProductDetailWithFolderPaths
-                .Select(x => x.folderPath)
+            var longestMatchFolder = allAssetProductDetails
+                .Select(assetProductDetail => assetProductDetail.rootFolderPath)
                 .Distinct()
                 .Where(folderPath => IsSubPathOf(assetFilePath, folderPath))
                 .OrderByDescending(folderPath => folderPath.Length)
@@ -292,9 +291,8 @@ namespace MitarashiDango.AvatarCatalog
                 return Enumerable.Empty<ExtractedAssetProductDetail>();
             }
 
-            return assetProductDetailWithFolderPaths
-                .Where(x => x.folderPath == longestMatchFolder)
-                .Select(x => x.assetProductDetail);
+            return allAssetProductDetails
+                .Where(assetProductDetail => assetProductDetail.rootFolderPath == longestMatchFolder);
         }
 
         private bool IsSubPathOf(string targetFilePath, string directoryPath)
@@ -339,6 +337,16 @@ namespace MitarashiDango.AvatarCatalog
             public string avatarObjectName = "";
             public List<string> dependencyPaths = new List<string>();
             public ExtractedAvatarMetadata avatarMetadata;
+        }
+
+        internal class AvatarDatabaseSource
+        {
+            public string avatarGlobalObjectId = "";
+            public string avatarObjectName = "";
+            public List<string> dependencyPaths = new List<string>();
+            public ExtractedAvatarMetadata avatarMetadata;
+            public string sceneAssetGuid;
+            public string thumbnailImageGuid = "";
 
             public AvatarSearchIndexSource GetAvatarSearchIndexSource()
             {
@@ -348,6 +356,17 @@ namespace MitarashiDango.AvatarCatalog
                     avatarObjectName = avatarObjectName,
                     dependencyPaths = dependencyPaths,
                     avatarMetadata = avatarMetadata
+                };
+            }
+
+            public AvatarCatalogDatabase.AvatarCatalogEntry GetAvatarCatalogEntry()
+            {
+                return new AvatarCatalogDatabase.AvatarCatalogEntry
+                {
+                    avatarGlobalObjectId = avatarGlobalObjectId,
+                    avatarObjectName = avatarObjectName,
+                    sceneAssetGuid = sceneAssetGuid,
+                    thumbnailImageGuid = thumbnailImageGuid,
                 };
             }
         }

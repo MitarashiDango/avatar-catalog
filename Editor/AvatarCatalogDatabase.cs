@@ -125,7 +125,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             public string avatarGlobalObjectId;
             public string avatarObjectName;
-            public SceneAsset sceneAsset;
+            public string sceneAssetGuid;
             public string thumbnailImageGuid = "";
 
             public AvatarCatalogEntry()
@@ -136,7 +136,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 avatarGlobalObjectId = ace.avatarGlobalObjectId;
                 avatarObjectName = ace.avatarObjectName;
-                sceneAsset = ace.sceneAsset;
+                sceneAssetGuid = ace.sceneAssetGuid;
                 thumbnailImageGuid = ace.thumbnailImageGuid;
             }
         }
