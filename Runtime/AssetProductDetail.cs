@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,7 +13,13 @@ namespace MitarashiDango.AvatarCatalog.Runtime
         /// <summary>
         /// 製品が配置されるフォルダーパス (空値の場合、製品情報ファイルが配置されているフォルダーが自動的に採用される)
         /// </summary>
+        [Obsolete]
         public string rootFolderPath;
+
+        /// <summary>
+        /// 製品が配置されるフォルダーパス (空値の場合、製品情報ファイルが配置されているフォルダーが自動的に採用される)
+        /// </summary>
+        public List<string> rootFolderPaths;
 
         /// <summary>
         /// 製品名

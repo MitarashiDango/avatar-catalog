@@ -47,6 +47,14 @@ namespace MitarashiDango.AvatarCatalog
 
             _productUrlField = root.Q<TextField>("product-url-field");
 
+            var rootFolderPath = root.Q<TextField>("root-foler-path");
+
+            var rootFolderPathProperty = serializedObject.FindProperty("rootFolderPath");
+            if (rootFolderPathProperty != null && string.IsNullOrEmpty(rootFolderPathProperty.stringValue))
+            {
+                rootFolderPath.style.visibility = Visibility.Hidden;
+            }
+
             var fetchProductDetailsButton = root.Q<Button>("fetch-product-details-button");
             fetchProductDetailsButton.RegisterCallback<ClickEvent>(OnFetchProductDetailsButtonClick);
 

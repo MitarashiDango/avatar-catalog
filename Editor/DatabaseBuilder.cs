@@ -341,7 +341,7 @@ namespace MitarashiDango.AvatarCatalog
                 .Where(assetPath => !string.IsNullOrEmpty(assetPath))
                 .Select(assetPath => AssetDatabase.LoadAssetAtPath<AssetProductDetail>(assetPath))
                 .Where(asset => asset != null)
-                .Select(assetProductDetail => new ExtractedAssetProductDetail(assetProductDetail))
+                .SelectMany(assetProductDetail => ExtractedAssetProductDetail.FromAssetProductDetail(assetProductDetail))
                 .ToList();
         }
 
@@ -399,7 +399,9 @@ namespace MitarashiDango.AvatarCatalog
             {
                 comment = avatarMetadata.comment;
                 tags = avatarMetadata.tags.ToList();
-                assetProductDetails = avatarMetadata.assetProductDetails.Select(apd => new ExtractedAssetProductDetail(apd)).ToList();
+                assetProductDetails = avatarMetadata.assetProductDetails
+                    .SelectMany(apd => ExtractedAssetProductDetail.FromAssetProductDetail(apd))
+                    .ToList();
             }
 
             public string comment = "";
@@ -409,23 +411,6 @@ namespace MitarashiDango.AvatarCatalog
 
         internal class ExtractedAssetProductDetail
         {
-            public ExtractedAssetProductDetail(AssetProductDetail apd)
-            {
-                fileGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(apd));
-                var folderPath = string.IsNullOrEmpty(apd.rootFolderPath)
-                    ? Path.GetDirectoryName(AssetDatabase.GetAssetPath(apd))
-                    : apd.rootFolderPath;
-                rootFolderPath = folderPath.Replace("\\", "/");
-
-                productName = apd.productName;
-                creatorName = apd.creatorName;
-                productUrl = apd.productUrl;
-                releaseDateTime = apd.releaseDateTime;
-                tags = apd.tags.ToList();
-                description = apd.description;
-                licenses = apd.licenses.ToList();
-            }
-
             public string fileGuid = "";
             public string rootFolderPath = "";
             public string productName;
@@ -439,6 +424,40 @@ namespace MitarashiDango.AvatarCatalog
             public bool Equals(ExtractedAssetProductDetail eapd)
             {
                 return !string.IsNullOrEmpty(fileGuid) && !string.IsNullOrEmpty(eapd.fileGuid) && fileGuid == eapd.fileGuid;
+            }
+
+            public static IEnumerable<ExtractedAssetProductDetail> FromAssetProductDetail(AssetProductDetail assetProductDetail)
+            {
+                var assetFilePath = AssetDatabase.GetAssetPath(assetProductDetail);
+                var fileGuid = AssetDatabase.AssetPathToGUID(assetFilePath);
+
+                var rootFolderPaths = new List<string>(assetProductDetail.rootFolderPaths);
+#pragma warning disable CS0612
+                if (!string.IsNullOrEmpty(assetProductDetail.rootFolderPath))
+                {
+                    rootFolderPaths.Add(assetProductDetail.rootFolderPath);
+                }
+#pragma warning restore CS0612
+
+                return rootFolderPaths
+                    .Where(path => !string.IsNullOrEmpty(path))
+                    .DefaultIfEmpty(Path.GetDirectoryName(assetFilePath))
+                    .Select(path => path.Replace("\\", "/"))
+                    .Select(rootFolderPath =>
+                    {
+                        return new ExtractedAssetProductDetail()
+                        {
+                            fileGuid = fileGuid,
+                            rootFolderPath = rootFolderPath,
+                            productName = assetProductDetail.productName,
+                            creatorName = assetProductDetail.creatorName,
+                            productUrl = assetProductDetail.productUrl,
+                            releaseDateTime = assetProductDetail.releaseDateTime,
+                            tags = assetProductDetail.tags.ToList(),
+                            description = assetProductDetail.description,
+                            licenses = assetProductDetail.licenses.ToList(),
+                        };
+                    });
             }
         }
     }
