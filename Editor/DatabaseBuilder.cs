@@ -107,6 +107,7 @@ namespace MitarashiDango.AvatarCatalog
                             {
                                 // 古いサムネイル画像を削除
                                 AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
+                                avatarDatabaseSource.thumbnailImageGuid = "";
                             }
                             else
                             {
