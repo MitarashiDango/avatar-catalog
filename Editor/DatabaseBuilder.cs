@@ -427,6 +427,10 @@ namespace MitarashiDango.AvatarCatalog
                 return !string.IsNullOrEmpty(fileGuid) && !string.IsNullOrEmpty(eapd.fileGuid) && fileGuid == eapd.fileGuid;
             }
 
+            public override bool Equals(object obj) => Equals(obj as ExtractedAssetProductDetail);
+
+            public override int GetHashCode() => fileGuid?.GetHashCode() ?? 0;
+
             public static IEnumerable<ExtractedAssetProductDetail> FromAssetProductDetail(AssetProductDetail assetProductDetail)
             {
                 var assetFilePath = AssetDatabase.GetAssetPath(assetProductDetail);
