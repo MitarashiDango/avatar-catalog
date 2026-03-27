@@ -74,6 +74,8 @@ namespace MitarashiDango.AvatarCatalog
                                 avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
                                 sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
                                 thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString(),
+                                avatarMetadata = extractedAvatar.ExtractedAvatarData.avatarMetadata,
+                                dependencyPaths = extractedAvatar.ExtractedAvatarData.dependencyPaths,
                             });
                         }
                         finally
@@ -92,6 +94,8 @@ namespace MitarashiDango.AvatarCatalog
                             avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
                             sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
                             thumbnailImageGuid = previousAvatarEntry.thumbnailImageGuid,
+                            avatarMetadata = extractedAvatar.ExtractedAvatarData.avatarMetadata,
+                            dependencyPaths = extractedAvatar.ExtractedAvatarData.dependencyPaths,
                         };
 
                         var avatarThumbnailImageExists = IsAssetFileExists(avatarDatabaseSource.thumbnailImageGuid);
@@ -167,7 +171,7 @@ namespace MitarashiDango.AvatarCatalog
             var avatarSearchIndex = AvatarSearchIndex.LoadOrCreateFile();
             var allAssetProductDetails = GetAllAssetProductDetails();
 
-            searchIndexSources.Select(searchIndexSource =>
+            avatarSearchIndex.entries = searchIndexSources.Select(searchIndexSource =>
             {
                 // アバターオブジェクトが参照しているアセットの製品情報を自動検出する
                 var autoMatchedAssetProductDetails = GetReferencedAssetProductDetails(searchIndexSource.dependencyPaths, allAssetProductDetails);
