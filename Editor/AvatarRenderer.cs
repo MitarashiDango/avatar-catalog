@@ -25,7 +25,10 @@ namespace MitarashiDango.AvatarCatalog
             if (_previewRenderUtility != null)
             {
                 _previewRenderUtility.Cleanup();
+                _previewRenderUtility = null;
             }
+
+            System.GC.SuppressFinalize(this);
         }
 
         public Texture2D Render(GameObject avatarRootObject, CameraSetting cameraSetting, int width, int height, Dictionary<string, float> defaultBlendShapes, Dictionary<string, float> animationClipBlendShapes, bool allowHDR)
