@@ -20,7 +20,12 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            var avatarMetadata = avatarRootObject.AddComponent<AvatarMetadata>();
+            var avatarMetadata = avatarRootObject.GetComponent<AvatarMetadata>();
+            if (avatarMetadata == null)
+            {
+                avatarMetadata = avatarRootObject.AddComponent<AvatarMetadata>();
+            }
+
             avatarMetadata.comment = legacyAvatarMetadata.comment;
             avatarMetadata.assetProductDetails = legacyAvatarMetadata.assetProductDetails.Where(apd => apd != null).ToList();
             avatarMetadata.tags = legacyAvatarMetadata.tags.ToList();

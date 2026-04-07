@@ -5,7 +5,7 @@ using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace MitarashiDango.AvatarCatalog
 {
-    public class AvatarBuildProcessor : MonoBehaviour, IVRCSDKPreprocessAvatarCallback
+    public class AvatarBuildProcessor : IVRCSDKPreprocessAvatarCallback
     {
         public int callbackOrder => -99999;
 
@@ -13,11 +13,12 @@ namespace MitarashiDango.AvatarCatalog
         {
             var components = new List<Component>();
             components.AddRange(avatarGameObject.GetComponentsInChildren<AvatarThumbnailSettings>(true));
+            components.AddRange(avatarGameObject.GetComponentsInChildren<AvatarMetadata>(true));
             components.AddRange(avatarGameObject.GetComponentsInChildren<AvatarMetadataSettings>(true));
 
             foreach (var component in components)
             {
-                DestroyImmediate(component);
+                Object.DestroyImmediate(component);
             }
 
             return true;

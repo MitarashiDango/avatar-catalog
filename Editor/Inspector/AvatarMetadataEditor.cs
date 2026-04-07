@@ -31,22 +31,6 @@ namespace MitarashiDango.AvatarCatalog
             Repaint();
         }
 
-        /// <summary>
-        /// カスタムフォントを適用します
-        /// </summary>
-        private void ApplyCustomFont(VisualElement root)
-        {
-            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
-            if (!string.IsNullOrEmpty(preferredFontFamilyName))
-            {
-                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
-                if (fontAsset != null) // FontAssetが取得できた場合のみ適用
-                {
-                    FontCache.ApplyFont(root, fontAsset);
-                }
-            }
-        }
-
         public override VisualElement CreateInspectorGUI()
         {
             var mainUxmlAsset = MiscUtil.LoadVisualTreeAsset(mainUxmlGuid);
@@ -57,7 +41,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var root = mainUxmlAsset.CloneTree();
 
-            ApplyCustomFont(root);
+            FontCache.ApplyPreferredFont(root);
 
             return root;
         }

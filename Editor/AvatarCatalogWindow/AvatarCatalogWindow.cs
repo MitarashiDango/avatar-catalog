@@ -135,12 +135,7 @@ namespace MitarashiDango.AvatarCatalog
             var root = rootVisualElement;
             root.Clear();
 
-            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
-            if (preferredFontFamilyName != "")
-            {
-                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
-                FontCache.ApplyFont(rootVisualElement, fontAsset);
-            }
+            FontCache.ApplyPreferredFont(rootVisualElement);
 
             if (!LoadUxmlAssets())
             {
@@ -189,12 +184,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnSceneOpened(Scene scene, OpenSceneMode mode)
         {
-            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
-            if (preferredFontFamilyName != "")
-            {
-                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
-                FontCache.ApplyFont(rootVisualElement, fontAsset);
-            }
+            FontCache.ApplyPreferredFont(rootVisualElement);
         }
 
         private void ShowInitialSetupView()
@@ -404,13 +394,26 @@ namespace MitarashiDango.AvatarCatalog
                     AddAvatarMetadataComponent(avatar);
                 });
 
-                e.menu.AppendAction("Build and Publish avatar", async action =>
+                e.menu.AppendAction("Build and Publish avatar", action =>
                 {
-                    await BuildAndPublishAvatar(avatar);
+                    _ = BuildAndPublishAvatarSafe(avatar);
                 });
             });
 
             return manipulator;
+        }
+
+        private async Task BuildAndPublishAvatarSafe(AvatarDatabase.AvatarDatabaseEntry avatar)
+        {
+            try
+            {
+                await BuildAndPublishAvatar(avatar);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+                EditorUtility.DisplayDialog("エラー", $"アバターのビルドおよびアップロード中に予期しないエラーが発生しました。\n\n{e.Message}", "OK");
+            }
         }
 
         private async Task BuildAndPublishAvatar(AvatarDatabase.AvatarDatabaseEntry avatar)
@@ -446,14 +449,14 @@ namespace MitarashiDango.AvatarCatalog
             catch (Exception ex)
             {
                 Debug.LogError(ex);
-                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
+                EditorUtility.DisplayDialog("エラー", $"VRChat へのログイン中にエラーが発生しました。\n\n{ex.Message}", "OK");
                 return;
             }
 
             if (!VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder))
             {
                 Debug.LogError("failed to get avatar builder");
-                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
+                EditorUtility.DisplayDialog("エラー", "VRChat SDK のアバタービルダーを取得できませんでした。VRChat SDK が正しくインストールされているか確認してください。", "OK");
                 return;
             }
 
@@ -461,14 +464,14 @@ namespace MitarashiDango.AvatarCatalog
             if (pipelineManager == null)
             {
                 Debug.LogError("failed to find Pipeline Manager");
-                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
+                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' に Pipeline Manager コンポーネントが見つかりませんでした。", "OK");
                 return;
             }
 
             if (string.IsNullOrEmpty(pipelineManager.blueprintId))
             {
                 Debug.LogError("Blueprint ID is null or empty");
-                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
+                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' の Blueprint ID が設定されていません。VRChat SDK のコントロールパネルからアバター情報を設定してください。", "OK");
                 return;
             }
 
@@ -488,7 +491,7 @@ namespace MitarashiDango.AvatarCatalog
             if (string.IsNullOrEmpty(vrcAvatar.ID))
             {
                 Debug.LogError("Avatars not yet uploaded");
-                EditorUtility.DisplayDialog("エラー", "アバターのアップロードに失敗しました。コンソールを確認してください。", "OK");
+                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' はまだ VRChat にアップロードされていません。先に VRChat SDK のコントロールパネルから初回アップロードを行ってください。", "OK");
                 return;
             }
 
@@ -508,7 +511,8 @@ namespace MitarashiDango.AvatarCatalog
             }
             catch (Exception e)
             {
-                Debug.LogError(e.Message);
+                Debug.LogError(e);
+                EditorUtility.DisplayDialog("エラー", $"アバターのビルドおよびアップロード中にエラーが発生しました。\n\n{e.Message}", "OK");
             }
         }
 

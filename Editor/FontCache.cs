@@ -42,7 +42,7 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var foundFontFamilyName = searchTargetFontFamilyNames.FirstOrDefault(fontFamilyName => osFontNames.Any(osFontName => osFontName.Equals(fontFamilyName, System.StringComparison.OrdinalIgnoreCase)));
-            if (foundFontFamilyName != null || foundFontFamilyName != "")
+            if (!string.IsNullOrEmpty(foundFontFamilyName))
             {
                 return foundFontFamilyName;
             }
@@ -85,6 +85,22 @@ namespace MitarashiDango.AvatarCatalog
             _cachedFonts.Add(familyName, fontAsset);
 
             return fontAsset;
+        }
+
+        /// <summary>
+        /// 望ましいフォントを検索し、見つかった場合はUI Elementsへ適用する
+        /// </summary>
+        /// <param name="element">適用対象エレメント</param>
+        public static void ApplyPreferredFont(VisualElement element)
+        {
+            var preferredFontFamilyName = GetPreferredFontFamilyName();
+            if (string.IsNullOrEmpty(preferredFontFamilyName))
+            {
+                return;
+            }
+
+            var fontAsset = GetOrCreateFontAsset(preferredFontFamilyName);
+            ApplyFont(element, fontAsset);
         }
 
         /// <summary>

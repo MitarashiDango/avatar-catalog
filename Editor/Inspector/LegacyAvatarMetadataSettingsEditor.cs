@@ -45,7 +45,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var root = mainUxmlAsset.CloneTree();
 
-            ApplyCustomFont(root);
+            FontCache.ApplyPreferredFont(root);
 
             _avatarMetadataObjectField = root.Q<ObjectField>("avatar-metadata");
             _warningMessageBox = root.Q<HelpBox>("warning-message-helpbox");
@@ -66,22 +66,6 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             return root;
-        }
-
-        /// <summary>
-        /// カスタムフォントを適用します
-        /// </summary>
-        private void ApplyCustomFont(VisualElement root)
-        {
-            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
-            if (!string.IsNullOrEmpty(preferredFontFamilyName))
-            {
-                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
-                if (fontAsset != null) // FontAssetが取得できた場合のみ適用
-                {
-                    FontCache.ApplyFont(root, fontAsset);
-                }
-            }
         }
 
         private void ShowFilenameMismatchUI()

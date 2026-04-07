@@ -96,12 +96,7 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
-            if (preferredFontFamilyName != "")
-            {
-                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
-                FontCache.ApplyFont(rootVisualElement, fontAsset);
-            }
+            FontCache.ApplyPreferredFont(rootVisualElement);
 
             var previewAvatarThumbnailRoot = mainUxmlAsset.CloneTree();
 
@@ -133,12 +128,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnSceneOpened(Scene scene, OpenSceneMode mode)
         {
-            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
-            if (preferredFontFamilyName != "")
-            {
-                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
-                FontCache.ApplyFont(rootVisualElement, fontAsset);
-            }
+            FontCache.ApplyPreferredFont(rootVisualElement);
         }
 
         private void SetAvatarObject(GameObject avatarObject)

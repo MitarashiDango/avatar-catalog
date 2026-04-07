@@ -43,7 +43,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var root = mainUxmlAsset.CloneTree();
 
-            ApplyCustomFont(root);
+            FontCache.ApplyPreferredFont(root);
 
             _productUrlField = root.Q<TextField>("product-url-field");
 
@@ -59,22 +59,6 @@ namespace MitarashiDango.AvatarCatalog
             fetchProductDetailsButton.RegisterCallback<ClickEvent>(OnFetchProductDetailsButtonClick);
 
             return root;
-        }
-
-        /// <summary>
-        /// カスタムフォントを適用します
-        /// </summary>
-        private void ApplyCustomFont(VisualElement root)
-        {
-            var preferredFontFamilyName = FontCache.GetPreferredFontFamilyName();
-            if (!string.IsNullOrEmpty(preferredFontFamilyName))
-            {
-                var fontAsset = FontCache.GetOrCreateFontAsset(preferredFontFamilyName);
-                if (fontAsset != null) // FontAssetが取得できた場合のみ適用
-                {
-                    FontCache.ApplyFont(root, fontAsset);
-                }
-            }
         }
 
         private void OnSceneOpened(Scene scene, OpenSceneMode mode)
@@ -125,9 +109,9 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var request = WebRequest.Create($"https://booth.pm/ja/items/{boothItemId}.json");
-            var response = request.GetResponse();
-            var responseBody = response.GetResponseStream();
-            var sr = new StreamReader(responseBody);
+            using var response = request.GetResponse();
+            using var responseBody = response.GetResponseStream();
+            using var sr = new StreamReader(responseBody);
             var json = JsonUtility.FromJson<BoothItem>(sr.ReadToEnd());
 
             return json;
