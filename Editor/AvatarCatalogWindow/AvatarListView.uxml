@@ -4,9 +4,8 @@
         <uie:ToolbarSearchField name="search-text-field" />
         <uie:ToolbarMenu name="avatar-catalog-menu" text="Menu" />
     </uie:Toolbar>
-    <ui:ScrollView name="avatar-list-scroll-view">
-        <ui:VisualElement name="items-container" />
-    </ui:ScrollView>
+    <ui:ListView name="avatar-grid-list-view" virtualization-method="FixedHeight" selection-type="None" show-border="false" show-alternating-row-backgrounds="None" />
+    <ui:Label name="no-results-label" text="検索結果が見つかりません" />
     <ui:VisualElement name="avatar-list-view-footer">
         <ui:Slider name="resize-grid-item-slider" high-value="256" low-value="128" />
     </ui:VisualElement>

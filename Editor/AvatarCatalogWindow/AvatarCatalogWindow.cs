@@ -22,22 +22,26 @@ namespace MitarashiDango.AvatarCatalog
     {
         private static readonly string _mainUxmlGuid = "486221a5f5fdd0b4cbc5ccc22397d354";
         private static readonly string _gridLayoutListItemUxmlGuid = "74e74187aebb7f6469bfc215a2ec332d";
-        private static readonly string _gridLayoutListRowContainerUxmlGuid = "41211d8814f507c4bae94f406711e600";
 
         private static readonly int MinColumnSpacing = 10;
         private static readonly char[] SearchWordsDelimiterChars = { ' ' };
 
         private VisualElement _avatarListView;
         private VisualElement _initialSetupView;
+        private ListView _avatarGridListView;
+        private Label _noResultsLabel;
 
         private VisualTreeAsset _gridLayoutListItemAsset;
-        private VisualTreeAsset _gridLayoutListRowContainerAsset;
 
         private string _searchText = "";
         private float _gridItemSize = Preferences.DefaultAvatarCatalogMaxItemSize;
         private AvatarSearchIndex _avatarSearchIndex = null;
         private AvatarDatabase _avatarCatalogDatabase = null;
         private Preferences _preferences;
+
+        private List<AvatarDatabase.AvatarDatabaseEntry> _filteredAvatars = new List<AvatarDatabase.AvatarDatabaseEntry>();
+        private int _currentMaxColumns = 1;
+        private Dictionary<string, Texture2D> _thumbnailCache = new Dictionary<string, Texture2D>();
 
         [MenuItem("Tools/Avatar Catalog/Avatar List")]
         public static void ShowWindow()
@@ -170,13 +174,6 @@ namespace MitarashiDango.AvatarCatalog
                 return false;
             }
 
-            _gridLayoutListRowContainerAsset = MiscUtil.LoadVisualTreeAsset(_gridLayoutListRowContainerUxmlGuid);
-            if (_gridLayoutListRowContainerAsset == null)
-            {
-                Debug.LogError($"Cannot load UXML file: {_gridLayoutListRowContainerUxmlGuid}");
-                return false;
-            }
-
             mainUxmlAsset.CloneTree(rootVisualElement);
 
             return true;
@@ -225,6 +222,13 @@ namespace MitarashiDango.AvatarCatalog
             resizeGridItemSlider.RegisterValueChangedCallback((e) => OnResizeGridItemSliderValueChanged(e));
             resizeGridItemSlider.RegisterCallback<PointerCaptureOutEvent>(e => OnResizeGridItemSliderPointerCaptureOut(e));
 
+            _avatarGridListView = root.Q<ListView>("avatar-grid-list-view");
+            _avatarGridListView.makeItem = MakeGridRow;
+            _avatarGridListView.bindItem = BindGridRow;
+            _avatarGridListView.unbindItem = UnbindGridRow;
+
+            _noResultsLabel = root.Q<Label>("no-results-label");
+
             root.UnregisterCallback<GeometryChangedEvent>(OnGeometryChanged);
             root.RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
         }
@@ -240,96 +244,164 @@ namespace MitarashiDango.AvatarCatalog
             _initialSetupView.style.display = DisplayStyle.None;
         }
 
-        private void UpdateGridLayout()
+        private void RefreshGridView()
         {
-            var gridContainer = _avatarListView.Q<VisualElement>("avatar-list-scroll-view").Q<VisualElement>("items-container");
-
-            gridContainer.Clear();
-
-            if (_avatarCatalogDatabase == null)
+            if (_avatarGridListView == null)
             {
                 return;
             }
 
-            var avatars = _avatarCatalogDatabase.avatars;
+            if (_avatarCatalogDatabase == null || _avatarCatalogDatabase.avatars.Count == 0)
+            {
+                _avatarGridListView.itemsSource = null;
+                _avatarGridListView.style.display = DisplayStyle.Flex;
+                _noResultsLabel.style.display = DisplayStyle.None;
+                return;
+            }
+
+            _filteredAvatars = FilterAvatars(_avatarCatalogDatabase.avatars, _searchText);
+
+            if (_filteredAvatars.Count == 0)
+            {
+                _avatarGridListView.itemsSource = null;
+                _avatarGridListView.style.display = DisplayStyle.None;
+                _noResultsLabel.style.display = _searchText.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+                return;
+            }
+
+            _noResultsLabel.style.display = DisplayStyle.None;
+            _avatarGridListView.style.display = DisplayStyle.Flex;
+
             var scrollViewWidth = rootVisualElement.contentRect.width;
-            if (avatars.Count == 0 || float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
+            if (float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
             {
                 return;
             }
 
-            avatars = FilterAvatars(avatars, _searchText);
-            if (avatars.Count == 0)
+            _currentMaxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - MinColumnSpacing) / (_gridItemSize + MinColumnSpacing)));
+            var rowCount = Mathf.CeilToInt((float)_filteredAvatars.Count / _currentMaxColumns);
+
+            _avatarGridListView.fixedItemHeight = _gridItemSize + 15;
+            _avatarGridListView.itemsSource = Enumerable.Range(0, rowCount).ToList();
+            _avatarGridListView.Rebuild();
+        }
+
+        private VisualElement MakeGridRow()
+        {
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.flexWrap = Wrap.NoWrap;
+            row.style.alignSelf = Align.Center;
+            return row;
+        }
+
+        private VisualElement CreateGridItem()
+        {
+            var gridItem = _gridLayoutListItemAsset.CloneTree();
+
+            var avatarThumbnailImage = gridItem.Q<Image>("avatar-thumbnail-image");
+            avatarThumbnailImage.RegisterCallback<GeometryChangedEvent>(e =>
             {
-                if (_searchText.Length > 0)
+                avatarThumbnailImage.style.width = e.newRect.height;
+            });
+
+            gridItem.RegisterCallback<ClickEvent>(e =>
+            {
+                if (gridItem.userData is AvatarDatabase.AvatarDatabaseEntry avatar)
                 {
-                    var noResultsLabel = new Label("検索結果が見つかりません");
-                    noResultsLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
-                    noResultsLabel.style.color = new Color(0.7f, 0.7f, 0.7f);
-                    noResultsLabel.style.marginTop = 20;
-                    noResultsLabel.style.fontSize = 14;
-                    gridContainer.Add(noResultsLabel);
+                    OnAvatarItemClick(e, avatar);
                 }
-                return;
-            }
+            });
 
-            var maxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - MinColumnSpacing) / (_gridItemSize + MinColumnSpacing)));
-            var rows = Mathf.CeilToInt((float)avatars.Count / maxColumns);
-
-            var totalRowWidth = maxColumns * _gridItemSize;
-            var spaceBetween = (scrollViewWidth - totalRowWidth) / (maxColumns + 1);
-
-            for (var row = 0; row < rows; row++)
+            var manipulator = new ContextualMenuManipulator(e =>
             {
-                var startIndex = row * maxColumns;
-                var endIndex = Mathf.Min(startIndex + maxColumns, avatars.Count);
-                var itemCountInRow = endIndex - startIndex;
-
-                var rowContainer = _gridLayoutListRowContainerAsset.CloneTree();
-                rowContainer.style.width = scrollViewWidth - (MinColumnSpacing * 2) - spaceBetween;
-                rowContainer.style.justifyContent = maxColumns > 1 ? Justify.SpaceBetween : Justify.Center;
-
-                for (var i = startIndex; i < endIndex; i++)
+                if (gridItem.userData is AvatarDatabase.AvatarDatabaseEntry avatar)
                 {
-                    var currentAvatar = avatars[i];
-
-                    var gridLayoutItem = _gridLayoutListItemAsset.CloneTree();
-                    gridLayoutItem.style.height = _gridItemSize;
-                    gridLayoutItem.style.width = _gridItemSize;
-
-                    var avatarThumbnailImage = gridLayoutItem.Q<Image>("avatar-thumbnail-image");
-                    avatarThumbnailImage.image = LoadAvatarThumbnailImage(currentAvatar);
-
-                    avatarThumbnailImage.RegisterCallback<GeometryChangedEvent>(e =>
+                    e.menu.AppendAction("Switch to active", action => ChangeToActiveAvatar(avatar));
+                    e.menu.AppendAction("Generate avatar thumbnail image", action =>
                     {
-                        avatarThumbnailImage.style.width = e.newRect.height;
+                        GenerateAvatarThumbnail(avatar);
+                        ReloadAvatars();
                     });
-
-                    var avatarNameLabel = gridLayoutItem.Q<Label>("avatar-name-label");
-                    avatarNameLabel.text = currentAvatar.avatarObjectName;
-
-                    gridLayoutItem.RegisterCallback<ClickEvent>((e) => OnAvatarItemClick(e, currentAvatar));
-
-                    var manipulator = GetAvatarCatalogItemContextualMenu(currentAvatar);
-                    manipulator.target = gridLayoutItem;
-
-                    rowContainer.Add(gridLayoutItem);
+                    e.menu.AppendAction("Add avatar thumbnail settings component", action => AddAvatarCatalogThumbnailSettingsComponent(avatar));
+                    e.menu.AppendAction("Add avatar metadata component", action => AddAvatarMetadataComponent(avatar));
+                    e.menu.AppendAction("Build and Publish avatar", action => { _ = BuildAndPublishAvatarSafe(avatar); });
                 }
+            });
+            gridItem.AddManipulator(manipulator);
 
-                // ダミー要素を追加
-                if (row == rows - 1)
+            return gridItem;
+        }
+
+        private void BindGridRow(VisualElement row, int rowIndex)
+        {
+            // 必要に応じて子要素を追加（列数が増えた場合）
+            while (row.childCount < _currentMaxColumns)
+            {
+                row.Add(CreateGridItem());
+            }
+
+            var startIndex = rowIndex * _currentMaxColumns;
+            var scrollViewWidth = _avatarGridListView.resolvedStyle.width;
+            if (float.IsNaN(scrollViewWidth) || scrollViewWidth <= 0)
+            {
+                scrollViewWidth = rootVisualElement.contentRect.width;
+            }
+
+            var totalRowWidth = _currentMaxColumns * _gridItemSize;
+            var spaceBetween = (scrollViewWidth - totalRowWidth) / (_currentMaxColumns + 1);
+            row.style.width = scrollViewWidth - (MinColumnSpacing * 2) - spaceBetween;
+            row.style.justifyContent = _currentMaxColumns > 1 ? Justify.SpaceBetween : Justify.Center;
+
+            var col = 0;
+            foreach (var gridItem in row.Children())
+            {
+                if (col >= _currentMaxColumns)
                 {
-                    var emptySlots = maxColumns - itemCountInRow;
-                    for (var j = 0; j < emptySlots; j++)
-                    {
-                        var dummyItem = new VisualElement();
-                        dummyItem.style.width = _gridItemSize;
-                        dummyItem.style.height = _gridItemSize;
-                        rowContainer.Add(dummyItem);
-                    }
+                    // 列数が減った場合の余剰スロットを非表示にする
+                    gridItem.style.display = DisplayStyle.None;
+                    col++;
+                    continue;
                 }
 
-                gridContainer.Add(rowContainer);
+                var avatarIndex = startIndex + col;
+                gridItem.style.display = DisplayStyle.Flex;
+                gridItem.style.width = _gridItemSize;
+                gridItem.style.height = _gridItemSize;
+
+                if (avatarIndex < _filteredAvatars.Count)
+                {
+                    var avatar = _filteredAvatars[avatarIndex];
+                    gridItem.userData = avatar;
+                    gridItem.style.visibility = Visibility.Visible;
+
+                    var image = gridItem.Q<Image>("avatar-thumbnail-image");
+                    image.image = LoadAvatarThumbnailImage(avatar);
+
+                    var label = gridItem.Q<Label>("avatar-name-label");
+                    label.text = avatar.avatarObjectName;
+                }
+                else
+                {
+                    // 末尾行のダミースロット
+                    gridItem.userData = null;
+                    gridItem.style.visibility = Visibility.Hidden;
+                }
+
+                col++;
+            }
+        }
+
+        private void UnbindGridRow(VisualElement row, int rowIndex)
+        {
+            foreach (var gridItem in row.Children())
+            {
+                gridItem.userData = null;
+                var image = gridItem.Q<Image>("avatar-thumbnail-image");
+                if (image != null)
+                {
+                    image.image = null;
+                }
             }
         }
 
@@ -340,6 +412,11 @@ namespace MitarashiDango.AvatarCatalog
                 return null;
             }
 
+            if (_thumbnailCache.TryGetValue(entry.thumbnailImageGuid, out var cached))
+            {
+                return cached;
+            }
+
             if (GUID.TryParse(entry.thumbnailImageGuid, out var thumbnailImageGuid))
             {
                 var path = AssetDatabase.GUIDToAssetPath(thumbnailImageGuid);
@@ -348,7 +425,12 @@ namespace MitarashiDango.AvatarCatalog
                     return null;
                 }
 
-                return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                if (texture != null)
+                {
+                    _thumbnailCache[entry.thumbnailImageGuid] = texture;
+                }
+                return texture;
             }
 
             return null;
@@ -376,40 +458,6 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             return result;
-        }
-
-        private ContextualMenuManipulator GetAvatarCatalogItemContextualMenu(AvatarDatabase.AvatarDatabaseEntry avatar)
-        {
-            var manipulator = new ContextualMenuManipulator(e =>
-            {
-                e.menu.AppendAction("Switch to active", action =>
-                {
-                    ChangeToActiveAvatar(avatar);
-                });
-
-                e.menu.AppendAction("Generate avatar thumbnail image", action =>
-                {
-                    GenerateAvatarThumbnail(avatar);
-                    ReloadAvatars();
-                });
-
-                e.menu.AppendAction("Add avatar thumbnail settings component", action =>
-                {
-                    AddAvatarCatalogThumbnailSettingsComponent(avatar);
-                });
-
-                e.menu.AppendAction("Add avatar metadata component", action =>
-                {
-                    AddAvatarMetadataComponent(avatar);
-                });
-
-                e.menu.AppendAction("Build and Publish avatar", action =>
-                {
-                    _ = BuildAndPublishAvatarSafe(avatar);
-                });
-            });
-
-            return manipulator;
         }
 
         private async Task BuildAndPublishAvatarSafe(AvatarDatabase.AvatarDatabaseEntry avatar)
@@ -537,7 +585,8 @@ namespace MitarashiDango.AvatarCatalog
         private void ReloadAvatarList(bool withRegenerateThumbnails = false)
         {
             BuildAvatarCatalogDatabase(withRegenerateThumbnails);
-            UpdateGridLayout();
+            _thumbnailCache.Clear();
+            RefreshGridView();
         }
 
         private void ChangeToActiveAvatar(AvatarDatabase.AvatarDatabaseEntry avatar)
@@ -613,6 +662,7 @@ namespace MitarashiDango.AvatarCatalog
                     }
                 }
 
+                _thumbnailCache.Remove(avatar.thumbnailImageGuid);
                 AvatarDatabase.Save(_avatarCatalogDatabase);
                 AssetDatabase.Refresh();
             }
@@ -707,8 +757,9 @@ namespace MitarashiDango.AvatarCatalog
             Preferences.Load();
             _avatarCatalogDatabase = AvatarDatabase.Load();
             _avatarSearchIndex = AvatarSearchIndex.Load();
+            _thumbnailCache.Clear();
 
-            UpdateGridLayout();
+            RefreshGridView();
             UpdateViews();
         }
 
@@ -720,8 +771,10 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            var gridContainer = _avatarListView.Q<VisualElement>("avatar-list-scroll-view").Q<VisualElement>("items-container");
-            gridContainer.Clear();
+            if (_avatarGridListView != null)
+            {
+                _avatarGridListView.itemsSource = null;
+            }
 
             ShowInitialSetupView();
         }
@@ -729,7 +782,7 @@ namespace MitarashiDango.AvatarCatalog
         private void OnSearchTextFieldValueChanged(ChangeEvent<string> e)
         {
             _searchText = e.newValue;
-            UpdateGridLayout();
+            RefreshGridView();
         }
 
         private void OnAvatarItemClick(ClickEvent e, AvatarDatabase.AvatarDatabaseEntry avatar)
@@ -743,14 +796,14 @@ namespace MitarashiDango.AvatarCatalog
         private void OnRunInitialSetupButtonClick()
         {
             BuildAvatarCatalogDatabase();
-            UpdateGridLayout();
+            RefreshGridView();
             UpdateViews();
         }
 
         private void OnResizeGridItemSliderValueChanged(ChangeEvent<float> e)
         {
             _gridItemSize = e.newValue;
-            UpdateGridLayout();
+            RefreshGridView();
         }
 
         private void OnResizeGridItemSliderPointerCaptureOut(PointerCaptureOutEvent e)
@@ -772,7 +825,8 @@ namespace MitarashiDango.AvatarCatalog
             {
                 return;
             }
-            UpdateGridLayout();
+
+            RefreshGridView();
         }
     }
 }
