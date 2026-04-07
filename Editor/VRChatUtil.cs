@@ -12,7 +12,7 @@ namespace MitarashiDango.AvatarCatalog
     public class VRChatUtil
     {
         private const string AgreementCode = "content.copyright.owned";
-        private const string VRCCopyrightAgreementCotentListKey = "VRCSdkControlPanel.CopyrightAgreement.ContentList";
+        private const string VRCCopyrightAgreementContentListKey = "VRCSdkControlPanel.CopyrightAgreement.ContentList";
 
         public static void InitializeRemoteConfig()
         {
@@ -72,7 +72,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             get
             {
-                var agreedContents = SessionState.GetString(VRCCopyrightAgreementCotentListKey, null);
+                var agreedContents = SessionState.GetString(VRCCopyrightAgreementContentListKey, null);
                 if (string.IsNullOrEmpty(agreedContents))
                 {
                     return new List<string>();
@@ -91,7 +91,7 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             agreedContents.Add(contentId);
-            SessionState.SetString(VRCCopyrightAgreementCotentListKey, string.Join(";", agreedContents));
+            SessionState.SetString(VRCCopyrightAgreementContentListKey, string.Join(";", agreedContents));
 
             var vrcAgreement = new VRCAgreement
             {
