@@ -19,7 +19,7 @@ namespace MitarashiDango.AvatarCatalog.Runtime
         /// <summary>
         /// 製品が配置されるフォルダーパス (空値の場合、製品情報ファイルが配置されているフォルダーが自動的に採用される)
         /// </summary>
-        public List<string> rootFolderPaths;
+        public List<string> rootFolderPaths = new List<string>();
 
         /// <summary>
         /// 製品名
@@ -44,7 +44,7 @@ namespace MitarashiDango.AvatarCatalog.Runtime
         /// <summary>
         /// 製品のタグ情報
         /// </summary>
-        public List<string> tags;
+        public List<string> tags = new List<string>();
 
         /// <summary>
         /// 製品説明
@@ -54,6 +54,6 @@ namespace MitarashiDango.AvatarCatalog.Runtime
         /// <summary>
         /// ライセンス情報
         /// </summary>
-        public List<License> licenses;
+        public List<License> licenses = new List<License>();
     }
 }

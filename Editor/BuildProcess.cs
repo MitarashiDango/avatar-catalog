@@ -13,6 +13,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             var components = new List<Component>();
             components.AddRange(avatarGameObject.GetComponentsInChildren<AvatarThumbnailSettings>(true));
+            components.AddRange(avatarGameObject.GetComponentsInChildren<AvatarMetadata>(true));
             components.AddRange(avatarGameObject.GetComponentsInChildren<AvatarMetadataSettings>(true));
 
             foreach (var component in components)

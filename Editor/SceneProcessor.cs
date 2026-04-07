@@ -1,7 +1,6 @@
 using System;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
-using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,6 +25,25 @@ namespace MitarashiDango.AvatarCatalog
             }
         }
 
+        public static IEnumerable<T> WalkScenes<T>(IEnumerable<string> sceneAssetPaths, Func<SceneAsset, Scene, T> walkAction)
+        {
+            return sceneAssetPaths.Select(sceneAssetPath =>
+            {
+                var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(sceneAssetPath);
+                return ProcessSceneTemporarily(sceneAssetPath, (scene) => walkAction(sceneAsset, scene));
+            });
+        }
+
+        public static T ProcessSceneTemporarily<T>(SceneAsset sceneAsset, Func<Scene, T> processAction)
+        {
+            return ProcessSceneTemporarily(AssetDatabase.GetAssetPath(sceneAsset), processAction);
+        }
+
+        public static T ProcessSceneTemporarily<T>(string scenePath, Func<Scene, T> processAction)
+        {
+            return ProcessSceneTemporarilyInternal(scenePath, processAction);
+        }
+
         public static void ProcessSceneTemporarily(SceneAsset sceneAsset, Action<Scene> processAction)
         {
             ProcessSceneTemporarily(AssetDatabase.GetAssetPath(sceneAsset), processAction);
@@ -33,52 +51,68 @@ namespace MitarashiDango.AvatarCatalog
 
         public static void ProcessSceneTemporarily(string scenePath, Action<Scene> processAction)
         {
+            ProcessSceneTemporarilyInternal<object>(scenePath, scene =>
+            {
+                if (processAction == null)
+                {
+                    return default;
+                }
+
+                processAction.Invoke(scene);
+                return default;
+            });
+        }
+
+        internal static T ProcessSceneTemporarilyInternal<T>(string scenePath, Func<Scene, T> processAction)
+        {
             if (string.IsNullOrEmpty(scenePath))
             {
-                Debug.LogError("[SceneProcessor] Scene path is null or empty.");
-                return;
+                throw new Exception("Scene path is null or empty.");
+            }
+
+            if (processAction == null)
+            {
+                return default;
             }
 
             var scene = EditorSceneManager.GetSceneByPath(scenePath);
+            var shouldCloseScene = false;
 
-            if (scene.IsValid() && scene.isLoaded)
+            // 既にロード済み（アクティブ、またはマルチシーン編集で開いている）場合
+            // 新たに開く/閉じる処理はスキップしてアクションのみ実行
+            if (!scene.IsValid() || !scene.isLoaded)
             {
-                // 既にロード済み（アクティブ、またはマルチシーン編集で開いている）場合
-                // 新たに開く/閉じる処理はスキップしてアクションのみ実行
                 try
                 {
-                    processAction?.Invoke(scene);
+                    scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+                    shouldCloseScene = true;
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[SceneProcessor] Error occurred while processing scene '{scene.name}': {e.Message}\n{e.StackTrace}");
+                    throw new Exception($"Failed to open scene at path '{scenePath}'", e);
                 }
-                return;
             }
 
             try
             {
-                scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+                return processAction.Invoke(scene);
             }
             catch (Exception e)
             {
-                Debug.LogError($"[SceneProcessor] Failed to open scene at path '{scenePath}': {e.Message}");
-                return;
-            }
-
-            // 処理実行と後始末
-            try
-            {
-                processAction?.Invoke(scene);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[SceneProcessor] Error occurred while processing scene '{scene.name}': {e.Message}\n{e.StackTrace}");
+                throw new Exception($"Error occurred while processing scene '{scene.name}'", e);
             }
             finally
             {
                 // 処理が成功しても失敗しても、一時的に開いたシーンは必ず閉じる
-                EditorSceneManager.CloseScene(scene, true);
+                if (shouldCloseScene)
+                {
+                    if (scene.isDirty)
+                    {
+                        EditorSceneManager.SaveScene(scene);
+                    }
+
+                    EditorSceneManager.CloseScene(scene, true);
+                }
             }
         }
     }

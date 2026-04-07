@@ -88,6 +88,22 @@ namespace MitarashiDango.AvatarCatalog
         }
 
         /// <summary>
+        /// 望ましいフォントを検索し、見つかった場合はUI Elementsへ適用する
+        /// </summary>
+        /// <param name="element">適用対象エレメント</param>
+        public static void ApplyPreferredFont(VisualElement element)
+        {
+            var preferredFontFamilyName = GetPreferredFontFamilyName();
+            if (string.IsNullOrEmpty(preferredFontFamilyName))
+            {
+                return;
+            }
+
+            var fontAsset = GetOrCreateFontAsset(preferredFontFamilyName);
+            ApplyFont(element, fontAsset);
+        }
+
+        /// <summary>
         /// フォントアセットをUI Elementsへ適用する
         /// </summary>
         /// <param name="element">適用対象エレメント</param>
