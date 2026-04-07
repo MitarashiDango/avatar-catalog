@@ -261,6 +261,15 @@ namespace MitarashiDango.AvatarCatalog
             avatars = FilterAvatars(avatars, _searchText);
             if (avatars.Count == 0)
             {
+                if (_searchText.Length > 0)
+                {
+                    var noResultsLabel = new Label("検索結果が見つかりません");
+                    noResultsLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    noResultsLabel.style.color = new Color(0.7f, 0.7f, 0.7f);
+                    noResultsLabel.style.marginTop = 20;
+                    noResultsLabel.style.fontSize = 14;
+                    gridContainer.Add(noResultsLabel);
+                }
                 return;
             }
 
