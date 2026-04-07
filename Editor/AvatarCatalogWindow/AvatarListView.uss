@@ -21,19 +21,19 @@
     flex-grow: 0;
 }
 
-#avatar-list-scroll-view {
+#avatar-grid-list-view {
     flex-grow: 1;
     background-color: rgb(51, 51, 51);
-    margin-top: 0;
-    margin-bottom: 0;
-    flex-direction: column;
 }
 
-#items-container {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    padding-top: 10px;
+#no-results-label {
+    display: none;
+    -unity-text-align: middle-center;
+    color: rgb(179, 179, 179);
+    padding-top: 20px;
+    font-size: 14px;
+    flex-grow: 1;
+    background-color: rgb(51, 51, 51);
 }
 
 #avatar-list-view-footer {
