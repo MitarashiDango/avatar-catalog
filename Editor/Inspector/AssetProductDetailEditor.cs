@@ -125,9 +125,9 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var request = WebRequest.Create($"https://booth.pm/ja/items/{boothItemId}.json");
-            var response = request.GetResponse();
-            var responseBody = response.GetResponseStream();
-            var sr = new StreamReader(responseBody);
+            using var response = request.GetResponse();
+            using var responseBody = response.GetResponseStream();
+            using var sr = new StreamReader(responseBody);
             var json = JsonUtility.FromJson<BoothItem>(sr.ReadToEnd());
 
             return json;
