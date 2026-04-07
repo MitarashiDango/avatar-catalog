@@ -42,7 +42,7 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var foundFontFamilyName = searchTargetFontFamilyNames.FirstOrDefault(fontFamilyName => osFontNames.Any(osFontName => osFontName.Equals(fontFamilyName, System.StringComparison.OrdinalIgnoreCase)));
-            if (foundFontFamilyName != null || foundFontFamilyName != "")
+            if (!string.IsNullOrEmpty(foundFontFamilyName))
             {
                 return foundFontFamilyName;
             }
