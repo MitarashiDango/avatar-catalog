@@ -171,11 +171,12 @@ namespace MitarashiDango.AvatarCatalog
         {
             var avatarSearchIndex = AvatarSearchIndex.LoadOrCreateFile();
             var allAssetProductDetails = GetAllAssetProductDetails();
+            var folderToProductDetails = BuildFolderToProductDetailsMap(allAssetProductDetails);
 
             avatarSearchIndex.entries = searchIndexSources.Select(searchIndexSource =>
             {
                 // アバターオブジェクトが参照しているアセットの製品情報を自動検出する
-                var autoMatchedAssetProductDetails = GetReferencedAssetProductDetails(searchIndexSource.dependencyPaths, allAssetProductDetails);
+                var autoMatchedAssetProductDetails = GetReferencedAssetProductDetails(searchIndexSource.dependencyPaths, folderToProductDetails);
 
                 return new AvatarSearchIndex.AvatarSearchIndexEntry
                 {
@@ -221,7 +222,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private void CleanupFiles(Dictionary<string, AvatarDatabase.AvatarDatabaseEntry> previousAvatarEntries, List<AvatarDatabaseSource> avatarDatabaseSources)
         {
-            var newAvatarGlobalObjectIds = avatarDatabaseSources.Select(avatar => avatar.avatarGlobalObjectId);
+            var newAvatarGlobalObjectIds = new HashSet<string>(avatarDatabaseSources.Select(avatar => avatar.avatarGlobalObjectId));
             var removedAvatars = previousAvatarEntries.Values.Where(prevAvatar => !newAvatarGlobalObjectIds.Contains(prevAvatar.avatarGlobalObjectId));
             foreach (var removedAvatar in removedAvatars)
             {
@@ -284,55 +285,68 @@ namespace MitarashiDango.AvatarCatalog
             return EditorUtility.CollectDependencies(roots);
         }
 
-        private IEnumerable<ExtractedAssetProductDetail> GetReferencedAssetProductDetails(List<string> dependencyPaths, IEnumerable<ExtractedAssetProductDetail> allAssetProductDetails)
+        private static StringComparer GetPathStringComparer()
+        {
+            if (Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsServer)
+            {
+                return StringComparer.OrdinalIgnoreCase;
+            }
+
+            return StringComparer.Ordinal;
+        }
+
+        /// <summary>
+        /// フォルダパスをキーとした製品情報のルックアップテーブルを構築する
+        /// </summary>
+        private Dictionary<string, List<ExtractedAssetProductDetail>> BuildFolderToProductDetailsMap(List<ExtractedAssetProductDetail> allAssetProductDetails)
+        {
+            var comparer = GetPathStringComparer();
+            var map = new Dictionary<string, List<ExtractedAssetProductDetail>>(comparer);
+
+            foreach (var detail in allAssetProductDetails)
+            {
+                var key = detail.rootFolderPath.TrimEnd('/');
+                if (!map.TryGetValue(key, out var list))
+                {
+                    list = new List<ExtractedAssetProductDetail>();
+                    map[key] = list;
+                }
+                list.Add(detail);
+            }
+
+            return map;
+        }
+
+        private IEnumerable<ExtractedAssetProductDetail> GetReferencedAssetProductDetails(List<string> dependencyPaths, Dictionary<string, List<ExtractedAssetProductDetail>> folderToProductDetails)
         {
             return dependencyPaths
-                .SelectMany(dependencyPath => FindAssetProductDetails(dependencyPath, allAssetProductDetails))
+                .SelectMany(dependencyPath => FindAssetProductDetails(dependencyPath, folderToProductDetails))
                 .Distinct();
         }
 
-        private IEnumerable<ExtractedAssetProductDetail> FindAssetProductDetails(string assetFilePath, IEnumerable<ExtractedAssetProductDetail> allAssetProductDetails)
+        /// <summary>
+        /// 依存パスのディレクトリを親方向に辿り、最長一致するフォルダパスの製品情報を返す
+        /// </summary>
+        private IEnumerable<ExtractedAssetProductDetail> FindAssetProductDetails(string assetFilePath, Dictionary<string, List<ExtractedAssetProductDetail>> folderToProductDetails)
         {
-            // 該当するパスの中で一番深い（長い）フォルダパスを見つける
-            var longestMatchFolder = allAssetProductDetails
-                .Select(assetProductDetail => assetProductDetail.rootFolderPath)
-                .Distinct()
-                .Where(folderPath => IsSubPathOf(assetFilePath, folderPath))
-                .OrderByDescending(folderPath => folderPath.Length)
-                .FirstOrDefault();
+            var dir = Path.GetDirectoryName(assetFilePath)?.Replace("\\", "/");
 
-            if (longestMatchFolder == null)
+            while (!string.IsNullOrEmpty(dir))
             {
-                return Enumerable.Empty<ExtractedAssetProductDetail>();
+                if (folderToProductDetails.TryGetValue(dir, out var products))
+                {
+                    return products;
+                }
+
+                var parent = Path.GetDirectoryName(dir)?.Replace("\\", "/");
+                if (parent == dir)
+                {
+                    break;
+                }
+                dir = parent;
             }
 
-            return allAssetProductDetails
-                .Where(assetProductDetail => assetProductDetail.rootFolderPath == longestMatchFolder);
-        }
-
-        private bool IsSubPathOf(string targetFilePath, string directoryPath)
-        {
-            if (string.IsNullOrEmpty(targetFilePath) || string.IsNullOrEmpty(directoryPath))
-            {
-                return false;
-            }
-
-            if (!directoryPath.EndsWith("/"))
-            {
-                directoryPath += "/";
-            }
-
-            StringComparison sc;
-            if (Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsServer)
-            {
-                sc = StringComparison.OrdinalIgnoreCase;
-            }
-            else
-            {
-                sc = StringComparison.Ordinal;
-            }
-
-            return targetFilePath.StartsWith(directoryPath, sc);
+            return Enumerable.Empty<ExtractedAssetProductDetail>();
         }
 
         private List<ExtractedAssetProductDetail> GetAllAssetProductDetails()
