@@ -454,7 +454,7 @@ namespace MitarashiDango.AvatarCatalog
                     return new List<AvatarDatabase.AvatarDatabaseEntry>();
                 }
 
-                result = result.Where(avatar => avatarGlobalObjectIds.Exists(id => id == avatar.avatarGlobalObjectId)).ToList();
+                result = result.Where(avatar => avatarGlobalObjectIds.Contains(avatar.avatarGlobalObjectId)).ToList();
             }
 
             return result;

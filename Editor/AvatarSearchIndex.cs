@@ -53,9 +53,9 @@ namespace MitarashiDango.AvatarCatalog
             return entries.Where(entry => entry.IsMatch(searchWords));
         }
 
-        public List<string> GetGlobalObjectIds(string[] searchWords)
+        public HashSet<string> GetGlobalObjectIds(string[] searchWords)
         {
-            return Find(searchWords).Select(entry => entry.avatarGlobalObjectId).ToList();
+            return Find(searchWords).Select(entry => entry.avatarGlobalObjectId).ToHashSet();
         }
 
         public static AvatarSearchIndex LoadOrCreateFile()
