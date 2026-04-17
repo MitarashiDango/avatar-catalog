@@ -61,9 +61,16 @@ namespace MitarashiDango.AvatarCatalog
             ApplyFromPreferences();
         }
 
+        private void OnDisable()
+        {
+            // ウィンドウ非表示時・アセンブリリロード前に参照を解放し、キャッシュの無制限な膨張を防ぐ
+            _thumbnailCache.Clear();
+        }
+
         private void OnDestroy()
         {
             EditorSceneManager.sceneOpened -= OnSceneOpened;
+            _thumbnailCache.Clear();
         }
 
         private void ApplyFromPreferences()
@@ -420,7 +427,12 @@ namespace MitarashiDango.AvatarCatalog
 
             if (_thumbnailCache.TryGetValue(entry.thumbnailImageGuid, out var cached))
             {
-                return cached;
+                // Unity の破棄済みオブジェクト判定 (== null) で stale エントリを除去する
+                if (cached != null)
+                {
+                    return cached;
+                }
+                _thumbnailCache.Remove(entry.thumbnailImageGuid);
             }
 
             if (GUID.TryParse(entry.thumbnailImageGuid, out var thumbnailImageGuid))
