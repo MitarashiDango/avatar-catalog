@@ -9,6 +9,20 @@ using VRC.SDKBase.Editor.Api;
 
 namespace MitarashiDango.AvatarCatalog
 {
+    /// <summary>
+    /// VRChat のログインセッションが切れている、または有効ではない場合にスローされる例外
+    /// </summary>
+    public class VRChatSessionExpiredException : Exception
+    {
+        public VRChatSessionExpiredException(string message) : base(message)
+        {
+        }
+
+        public VRChatSessionExpiredException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
     public class VRChatUtil
     {
         private const string AgreementCode = "content.copyright.owned";
@@ -52,17 +66,52 @@ namespace MitarashiDango.AvatarCatalog
             var tcs = new TaskCompletionSource<bool>();
             APIUser.InitialFetchCurrentUser(c =>
             {
-                if (c.Model is not APIUser apiUser)
+                try
                 {
-                    tcs.SetException(new Exception("failed to load user, please login again with your VRChat account"));
-                    return;
-                }
+                    if (c?.Model is not APIUser apiUser)
+                    {
+                        // API は応答したが APIUser として解釈できなかった。セッション切れの可能性が高い。
+                        tcs.TrySetException(new VRChatSessionExpiredException(
+                            "VRChat のログインセッションが有効ではありません。"));
+                        return;
+                    }
 
-                AnalyticsSDK.LoggedInUserChanged(apiUser);
-                tcs.SetResult(true);
+                    AnalyticsSDK.LoggedInUserChanged(apiUser);
+                    tcs.TrySetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.TrySetException(ex);
+                }
             }, err =>
             {
-                tcs.SetException(new Exception(string.IsNullOrEmpty(err.Error) ? "unspecified error has occurred." : err.Error));
+                try
+                {
+                    string errorMessage = null;
+                    var errorAccessFailed = false;
+                    try
+                    {
+                        errorMessage = err?.Error;
+                    }
+                    catch
+                    {
+                        // err.Error の getter が例外を投げる場合 (= SDK 側の状態異常、セッション切れ時に観測される)
+                        errorAccessFailed = true;
+                    }
+
+                    if (err == null || errorAccessFailed || string.IsNullOrEmpty(errorMessage))
+                    {
+                        tcs.TrySetException(new VRChatSessionExpiredException(
+                            "VRChat のログインセッションが有効ではありません。"));
+                        return;
+                    }
+
+                    tcs.TrySetException(new Exception(errorMessage));
+                }
+                catch (Exception ex)
+                {
+                    tcs.TrySetException(ex);
+                }
             });
 
             await tcs.Task;

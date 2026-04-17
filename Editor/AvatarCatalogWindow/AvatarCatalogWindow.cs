@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using MitarashiDango.AvatarCatalog.Runtime;
 using UnityEditor;
@@ -14,6 +15,7 @@ using VRC.Core;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3A.Editor;
 using VRC.SDKBase;
+using VRC.SDKBase.Editor;
 using VRC.SDKBase.Editor.Api;
 
 namespace MitarashiDango.AvatarCatalog
@@ -317,7 +319,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 if (gridItem.userData is AvatarDatabase.AvatarDatabaseEntry avatar)
                 {
-                    e.menu.AppendAction("Switch to active", action => ChangeToActiveAvatar(avatar));
+                    e.menu.AppendAction("Switch to active", action => ChangeToActiveAvatar(avatar, out _));
                     e.menu.AppendAction("Generate avatar thumbnail image", action =>
                     {
                         GenerateAvatarThumbnail(avatar);
@@ -460,117 +462,359 @@ namespace MitarashiDango.AvatarCatalog
             return result;
         }
 
+        private const string BuildAndPublishProgressTitle = "アバターのビルド・アップロード";
+
         private async Task BuildAndPublishAvatarSafe(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
             try
             {
                 await BuildAndPublishAvatar(avatar);
             }
+            catch (OperationCanceledException)
+            {
+                EditorUtility.ClearProgressBar();
+                EditorUtility.DisplayDialog("情報", "アバターのアップロードをキャンセルしました。", "OK");
+            }
             catch (Exception e)
             {
                 Debug.LogError(e);
-                EditorUtility.DisplayDialog("エラー", $"アバターのビルドおよびアップロード中に予期しないエラーが発生しました。\n\n{e.Message}", "OK");
+                EditorUtility.ClearProgressBar();
+                EditorUtility.DisplayDialog(
+                    "エラー",
+                    $"アバターのビルドおよびアップロード中に予期しないエラーが発生しました。\n\n{e.Message}",
+                    "OK");
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
             }
         }
 
         private async Task BuildAndPublishAvatar(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
-            ChangeToActiveAvatar(avatar);
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "アバターを準備中...", 0.05f);
 
-            if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
+            if (!ChangeToActiveAvatar(avatar, out var avatarObject))
             {
-                Debug.LogError("Failed to parse GlobalObjectId");
-                return;
-            }
-
-            var avatarObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(avatarGlobalObjectId) as GameObject;
-            if (avatarObject == null)
-            {
-                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' が見つかりませんでした。", "OK");
-                Debug.LogError("failed to find avatar object");
                 return;
             }
 
             VRChatUtil.ClearVRCSDKIssues();
             VRChatUtil.InitializeRemoteConfig();
 
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "VRChat にログイン中...", 0.15f);
+
+            if (!await EnsureVRChatLoggedIn())
+            {
+                return;
+            }
+
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "SDK ビルダーを取得中...", 0.25f);
+
+            if (!VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder))
+            {
+                ShowError(
+                    "エラー",
+                    "VRChat SDK のアバタービルダーを取得できませんでした。VRChat SDK が正しくインストールされているか確認してください。");
+                return;
+            }
+
+            if (!ValidateAvatarSetup(avatarObject, avatar, out var pipelineManager))
+            {
+                return;
+            }
+
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "アバター情報を取得中...", 0.35f);
+
+            var (resolved, vrcAvatar) = await TryResolveVRCAvatar(pipelineManager.blueprintId, avatar.avatarObjectName);
+            if (!resolved)
+            {
+                return;
+            }
+
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "ライセンス規約を確認中...", 0.45f);
+
+            if (!await ConfirmCopyrightAgreement(vrcAvatar.ID))
+            {
+                return;
+            }
+
+            await ExecuteBuildAndUpload(builder, avatarObject, vrcAvatar);
+        }
+
+        private async Task<bool> EnsureVRChatLoggedIn()
+        {
             try
             {
                 if (!await VRChatUtil.LogIn())
                 {
-                    EditorUtility.DisplayDialog("エラー", "VRChat アカウントでログインしてください。", "OK");
-                    Debug.LogError("please login with your VRChat account");
-                    return;
+                    ShowError("エラー", "VRChat アカウントでログインしてください。");
+                    return false;
                 }
+                return true;
+            }
+            catch (VRChatSessionExpiredException ex)
+            {
+                ShowError(
+                    "エラー",
+                    "VRChat のログインセッションが切れています。\nVRChat SDK のコントロールパネルから再度ログインしてください。",
+                    ex);
+                return false;
             }
             catch (Exception ex)
             {
-                Debug.LogError(ex);
-                EditorUtility.DisplayDialog("エラー", $"VRChat へのログイン中にエラーが発生しました。\n\n{ex.Message}", "OK");
-                return;
+                ShowError(
+                    "エラー",
+                    $"VRChat へのログイン中にエラーが発生しました。\n\n{ex.Message}",
+                    ex);
+                return false;
             }
+        }
 
-            if (!VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder))
-            {
-                Debug.LogError("failed to get avatar builder");
-                EditorUtility.DisplayDialog("エラー", "VRChat SDK のアバタービルダーを取得できませんでした。VRChat SDK が正しくインストールされているか確認してください。", "OK");
-                return;
-            }
-
-            var pipelineManager = avatarObject.GetComponent<PipelineManager>();
+        private bool ValidateAvatarSetup(
+            GameObject avatarObject,
+            AvatarDatabase.AvatarDatabaseEntry avatar,
+            out PipelineManager pipelineManager)
+        {
+            pipelineManager = avatarObject.GetComponent<PipelineManager>();
             if (pipelineManager == null)
             {
-                Debug.LogError("failed to find Pipeline Manager");
-                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' に Pipeline Manager コンポーネントが見つかりませんでした。", "OK");
-                return;
+                ShowError(
+                    "エラー",
+                    $"アバター '{avatar.avatarObjectName}' に Pipeline Manager コンポーネントが見つかりませんでした。");
+                return false;
             }
 
             if (string.IsNullOrEmpty(pipelineManager.blueprintId))
             {
-                Debug.LogError("Blueprint ID is null or empty");
-                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' の Blueprint ID が設定されていません。VRChat SDK のコントロールパネルからアバター情報を設定してください。", "OK");
-                return;
+                ShowError(
+                    "エラー",
+                    $"アバター '{avatar.avatarObjectName}' の Blueprint ID が設定されていません。VRChat SDK のコントロールパネルからアバター情報を設定してください。");
+                return false;
             }
 
-            VRCAvatar vrcAvatar = default;
+            return true;
+        }
+
+        private async Task<(bool ok, VRCAvatar vrcAvatar)> TryResolveVRCAvatar(string blueprintId, string avatarDisplayName)
+        {
             try
             {
-                vrcAvatar = await VRCApi.GetAvatar(pipelineManager.blueprintId, true);
+                var vrcAvatar = await VRCApi.GetAvatar(blueprintId, true);
+                if (string.IsNullOrEmpty(vrcAvatar.ID))
+                {
+                    ShowError(
+                        "エラー",
+                        $"アバター '{avatarDisplayName}' はまだ VRChat にアップロードされていません。先に VRChat SDK のコントロールパネルから初回アップロードを行ってください。");
+                    return (false, default);
+                }
+                return (true, vrcAvatar);
+            }
+            catch (ApiErrorException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                ShowError(
+                    "エラー",
+                    $"アバター '{avatarDisplayName}' はまだ VRChat にアップロードされていません。先に VRChat SDK のコントロールパネルから初回アップロードを行ってください。",
+                    ex);
+                return (false, default);
             }
             catch (ApiErrorException ex)
             {
-                if (ex.StatusCode != HttpStatusCode.NotFound)
-                {
-                    throw new Exception("Unexpected error", ex);
-                }
+                ShowError(
+                    "エラー",
+                    $"アバター情報の取得に失敗しました。\nHTTPステータス: {(int)ex.StatusCode} ({ex.StatusCode})\n\n{ex.Message}",
+                    ex);
+                return (false, default);
+            }
+            catch (TaskCanceledException ex)
+            {
+                ShowError(
+                    "エラー",
+                    $"VRChat サーバーとの通信に失敗しました。接続を確認して再度お試しください。\n\n{ex.Message}",
+                    ex);
+                return (false, default);
+            }
+        }
+
+        private async Task<bool> ConfirmCopyrightAgreement(string avatarId)
+        {
+            if (VRChatUtil.AgreedContentThisSession.Contains(avatarId))
+            {
+                return true;
             }
 
-            if (string.IsNullOrEmpty(vrcAvatar.ID))
-            {
-                Debug.LogError("Avatars not yet uploaded");
-                EditorUtility.DisplayDialog("エラー", $"アバター '{avatar.avatarObjectName}' はまだ VRChat にアップロードされていません。先に VRChat SDK のコントロールパネルから初回アップロードを行ってください。", "OK");
-                return;
-            }
+            // 同意ダイアログが進捗バーと重ならないよう一旦クリア
+            EditorUtility.ClearProgressBar();
 
-            if (!VRChatUtil.AgreedContentThisSession.Contains(vrcAvatar.ID))
+            if (!EditorUtility.DisplayDialog("Confirm", VRCCopyrightAgreement.AgreementText, "OK", "Cancel"))
             {
-                if (!EditorUtility.DisplayDialog("Confirm", VRCCopyrightAgreement.AgreementText, "OK", "Cancel"))
-                {
-                    return;
-                }
+                return false;
             }
 
             try
             {
-                await VRChatUtil.AgreeCopyrightAgreement(vrcAvatar.ID);
-                await builder.BuildAndUpload(avatarObject, vrcAvatar);
+                await VRChatUtil.AgreeCopyrightAgreement(avatarId);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ShowError(
+                    "エラー",
+                    $"ライセンス規約への同意処理でエラーが発生しました。\n\n{ex.Message}",
+                    ex);
+                return false;
+            }
+        }
+
+        private async Task ExecuteBuildAndUpload(
+            IVRCSdkAvatarBuilderApi builder,
+            GameObject avatarObject,
+            VRCAvatar vrcAvatar)
+        {
+            using var cts = new CancellationTokenSource();
+
+            // ビルドフェーズは 50% 地点に固定（SDK が進捗率を提供しないため）
+            const float BuildPhaseProgress = 0.55f;
+            // アップロードフェーズは 70% → 100% にマッピング
+            const float UploadPhaseStart = 0.70f;
+            const float UploadPhaseRange = 0.30f;
+
+            // SDK のイベントはバックグラウンドスレッドからも呼ばれる可能性があるため、
+            // イベントハンドラでは共有状態の更新のみを行い、EditorUtility の API 呼び出しは
+            // EditorApplication.update (必ずメインスレッド) 側に寄せる。
+            var progressLock = new object();
+            var progressMessage = "ビルドを開始中...";
+            var progressValue = 0.50f;
+            var progressDirty = true;
+
+            EventHandler<string> onBuildProgress = (_, status) =>
+            {
+                lock (progressLock)
+                {
+                    progressMessage = $"ビルド中: {status}";
+                    progressValue = BuildPhaseProgress;
+                    progressDirty = true;
+                }
+            };
+
+            EventHandler<(string status, float percentage)> onUploadProgress = (_, pg) =>
+            {
+                lock (progressLock)
+                {
+                    progressMessage = $"アップロード中: {pg.status}";
+                    progressValue = UploadPhaseStart + Mathf.Clamp01(pg.percentage) * UploadPhaseRange;
+                    progressDirty = true;
+                }
+            };
+
+            void ProgressTick()
+            {
+                string message;
+                float value;
+                lock (progressLock)
+                {
+                    if (!progressDirty)
+                    {
+                        return;
+                    }
+                    message = progressMessage;
+                    value = progressValue;
+                    progressDirty = false;
+                }
+
+                if (EditorUtility.DisplayCancelableProgressBar(BuildAndPublishProgressTitle, message, value))
+                {
+                    cts.Cancel();
+                }
+            }
+
+            builder.OnSdkBuildProgress += onBuildProgress;
+            builder.OnSdkUploadProgress += onUploadProgress;
+            EditorApplication.update += ProgressTick;
+
+            var succeeded = false;
+            try
+            {
+                EditorUtility.DisplayCancelableProgressBar(
+                    BuildAndPublishProgressTitle,
+                    "ビルドを開始中...",
+                    0.50f);
+
+                await builder.BuildAndUpload(avatarObject, vrcAvatar, cancellationToken: cts.Token);
+                succeeded = true;
+            }
+            catch (OperationCanceledException)
+            {
+                // BuildAndPublishAvatarSafe 側で一元的にキャンセルメッセージを出す
+                throw;
+            }
+            catch (BuildBlockedException ex)
+            {
+                ShowError("エラー", $"他の処理によりビルドが中断されました。\n\n{ex.Message}", ex);
+            }
+            catch (ValidationException ex)
+            {
+                ShowError(
+                    "エラー",
+                    $"アバターのバリデーションに失敗しました。VRChat SDK のコントロールパネルでエラー内容を確認してください。\n\n{ex.Message}",
+                    ex);
+            }
+            catch (OwnershipException ex)
+            {
+                ShowError("エラー", "このアバターの所有者ではないため、アップロードできません。", ex);
+            }
+            catch (BundleExistsException ex)
+            {
+                ShowError(
+                    "エラー",
+                    $"このアバターは既に同じ内容がアップロードされています。\n\n{ex.Message}",
+                    ex);
+            }
+            catch (UploadException ex)
+            {
+                ShowError("エラー", $"アバターのアップロードに失敗しました。\n\n{ex.Message}", ex);
+            }
+            catch (BuilderException ex)
+            {
+                ShowError("エラー", $"アバターのビルドに失敗しました。\n\n{ex.Message}", ex);
+            }
+            catch (CopyrightOwnershipAgreementException ex)
+            {
+                ShowError("エラー", $"ライセンス規約への同意が必要です。\n\n{ex.Message}", ex);
+            }
+            catch (Exception ex)
+            {
+                ShowError(
+                    "エラー",
+                    $"アバターのビルドおよびアップロード中にエラーが発生しました。\n\n{ex.Message}",
+                    ex);
+            }
+            finally
+            {
+                EditorApplication.update -= ProgressTick;
+                builder.OnSdkBuildProgress -= onBuildProgress;
+                builder.OnSdkUploadProgress -= onUploadProgress;
+            }
+
+            if (succeeded)
+            {
+                EditorUtility.ClearProgressBar();
                 EditorUtility.DisplayDialog("情報", "アバターのビルドおよびアップロードが完了しました。", "OK");
             }
-            catch (Exception e)
+        }
+
+        private static void ShowError(string title, string message, Exception ex = null)
+        {
+            EditorUtility.ClearProgressBar();
+            if (ex != null)
             {
-                Debug.LogError(e);
-                EditorUtility.DisplayDialog("エラー", $"アバターのビルドおよびアップロード中にエラーが発生しました。\n\n{e.Message}", "OK");
+                Debug.LogError($"{title}: {message}\n{ex}");
             }
+            else
+            {
+                Debug.LogError($"{title}: {message}");
+            }
+            EditorUtility.DisplayDialog(title, message, "OK");
         }
 
         private void BuildAvatarCatalogDatabase(bool withRegenerateThumbnails = false)
@@ -589,20 +833,26 @@ namespace MitarashiDango.AvatarCatalog
             RefreshGridView();
         }
 
-        private void ChangeToActiveAvatar(AvatarDatabase.AvatarDatabaseEntry avatar)
+        private bool ChangeToActiveAvatar(AvatarDatabase.AvatarDatabaseEntry avatar, out GameObject avatarObject)
         {
+            avatarObject = null;
+
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
                 EditorUtility.DisplayDialog("情報", "Play Mode実行中はアバターの切り替えは行えません", "OK");
-                return;
+                return false;
             }
 
-            var avatarObject = ChangeSelectingObject(avatar);
-            if (avatarObject != null)
+            avatarObject = ChangeSelectingObject(avatar);
+            if (avatarObject == null)
             {
-                EditorGUIUtility.PingObject(avatarObject);
-                Debug.Log("Selected: " + avatarObject.name);
+                ShowError("エラー", $"アバター '{avatar.avatarObjectName}' が存在するシーンを開けませんでした。");
+                return false;
             }
+
+            EditorGUIUtility.PingObject(avatarObject);
+            Debug.Log("Selected: " + avatarObject.name);
+            return true;
         }
 
         private void GenerateAvatarThumbnail(AvatarDatabase.AvatarDatabaseEntry avatar)
@@ -789,7 +1039,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
             {
-                ChangeToActiveAvatar(avatar);
+                ChangeToActiveAvatar(avatar, out _);
             }
         }
 
