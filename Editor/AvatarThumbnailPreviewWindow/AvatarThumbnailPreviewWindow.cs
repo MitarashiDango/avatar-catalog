@@ -14,6 +14,12 @@ namespace MitarashiDango.AvatarCatalog
     {
         private static readonly string _mainUxmlGuid = "1171fa6381d630845a36a5e82ec47f61";
 
+        // Avatar Thumbnail Preview ウィンドウの最小サイズ
+        private static readonly Vector2 DefaultMinWindowSize = new Vector2(384, 490);
+        // プレビュー用 RenderTexture のサイズ (正方形) / デプス深度 (ビット数)
+        private const int PreviewTextureSize = 512;
+        private const int PreviewTextureDepthBits = 32;
+
         private ObjectField _avatarDescriptorObjectField;
         private Vector3Field _cameraPositionOffsetField;
         private Vector3Field _cameraRotationField;
@@ -39,7 +45,7 @@ namespace MitarashiDango.AvatarCatalog
         internal static AvatarThumbnailPreviewWindow ShowWindowInternal()
         {
             var window = GetWindow<AvatarThumbnailPreviewWindow>("Avatar Thumbnail Preview");
-            window.minSize = new Vector2(384, 490);
+            window.minSize = DefaultMinWindowSize;
             return window;
         }
 
@@ -73,7 +79,7 @@ namespace MitarashiDango.AvatarCatalog
         {
             if (_texture == null)
             {
-                _texture = new RenderTexture(512, 512, 32, DefaultFormat.LDR);
+                _texture = new RenderTexture(PreviewTextureSize, PreviewTextureSize, PreviewTextureDepthBits, DefaultFormat.LDR);
             }
         }
 
