@@ -26,7 +26,8 @@ namespace MitarashiDango.AvatarCatalog
         private static readonly string _gridLayoutListItemUxmlGuid = "74e74187aebb7f6469bfc215a2ec332d";
 
         private static readonly int MinColumnSpacing = 10;
-        private static readonly char[] SearchWordsDelimiterChars = { ' ' };
+        // 半角スペース、全角スペース (U+3000)、タブを区切り文字とする
+        private static readonly char[] SearchWordsDelimiterChars = { ' ', '\u3000', '\t' };
 
         private VisualElement _avatarListView;
         private VisualElement _initialSetupView;
@@ -61,9 +62,16 @@ namespace MitarashiDango.AvatarCatalog
             ApplyFromPreferences();
         }
 
+        private void OnDisable()
+        {
+            // ウィンドウ非表示時・アセンブリリロード前に参照を解放し、キャッシュの無制限な膨張を防ぐ
+            _thumbnailCache.Clear();
+        }
+
         private void OnDestroy()
         {
             EditorSceneManager.sceneOpened -= OnSceneOpened;
+            _thumbnailCache.Clear();
         }
 
         private void ApplyFromPreferences()
@@ -420,7 +428,12 @@ namespace MitarashiDango.AvatarCatalog
 
             if (_thumbnailCache.TryGetValue(entry.thumbnailImageGuid, out var cached))
             {
-                return cached;
+                // Unity の破棄済みオブジェクト判定 (== null) で stale エントリを除去する
+                if (cached != null)
+                {
+                    return cached;
+                }
+                _thumbnailCache.Remove(entry.thumbnailImageGuid);
             }
 
             if (GUID.TryParse(entry.thumbnailImageGuid, out var thumbnailImageGuid))
@@ -448,7 +461,16 @@ namespace MitarashiDango.AvatarCatalog
 
             if (searchText.Length > 0)
             {
-                var searchWords = searchText.ToLower().Split(SearchWordsDelimiterChars);
+                // カタカナ/ひらがな同一視、全角/半角統一、カルチャ非依存の小文字化を行ったうえで、
+                // 区切り文字で分割し、空エントリは除外する
+                var searchWords = SearchTextNormalizer.Normalize(searchText)
+                    .Split(SearchWordsDelimiterChars, StringSplitOptions.RemoveEmptyEntries);
+
+                if (searchWords.Length == 0)
+                {
+                    return result;
+                }
+
                 if (_avatarSearchIndex == null)
                 {
                     _avatarSearchIndex = AvatarSearchIndex.LoadOrCreateFile();
