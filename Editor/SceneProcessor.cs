@@ -108,7 +108,11 @@ namespace MitarashiDango.AvatarCatalog
                 {
                     if (scene.isDirty)
                     {
-                        EditorSceneManager.SaveScene(scene);
+                        var choice = SceneSaveConfirmationDialog.Prompt(scene.name);
+                        if (choice == SceneSaveChoice.Save)
+                        {
+                            EditorSceneManager.SaveScene(scene);
+                        }
                     }
 
                     EditorSceneManager.CloseScene(scene, true);

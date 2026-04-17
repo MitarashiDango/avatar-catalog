@@ -17,11 +17,14 @@ namespace MitarashiDango.AvatarCatalog
         {
         }
 
+        private const string ProgressBarTitle = "アバターデータベースを構築中";
+
         /// <summary>
         /// アバターカタログデータベースと各種インデックスを構築する
         /// </summary>
         /// <param name="withRegenerateThumbnails">更新時にサムネイル画像も新しくするか</param>
-        public void BuildAvatarCatalogDatabaseAndIndexes(bool withRegenerateThumbnails = false)
+        /// <returns>完了した場合は true、キャンセルされた場合は false を返す</returns>
+        public bool BuildAvatarCatalogDatabaseAndIndexes(bool withRegenerateThumbnails = false)
         {
             // フォルダー作成
             FolderUtil.CreateUserDataFolders();
@@ -37,124 +40,177 @@ namespace MitarashiDango.AvatarCatalog
 
             using var avatarRenderer = new AvatarRenderer();
 
-            var allSceneAssetPaths = SceneProcessor.GetAllSceneAssetPaths();
+            var allSceneAssetPaths = SceneProcessor.GetAllSceneAssetPaths().ToList();
+            var totalScenes = allSceneAssetPaths.Count;
+            // シーン走査に進捗の 90% を割り当て、残りの 10% を集計処理で消費する
+            const float SceneWalkPhaseRatio = 0.9f;
 
-            SceneProcessor.WalkScenes(allSceneAssetPaths, (sceneAsset, currentScene) =>
+            try
             {
-                sceneEntries.Add(new AvatarDatabase.SceneEntry()
+                for (var sceneIndex = 0; sceneIndex < totalScenes; sceneIndex++)
                 {
-                    sceneName = sceneAsset.name,
-                    sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
+                    var sceneAssetPath = allSceneAssetPaths[sceneIndex];
+                    var displaySceneName = Path.GetFileNameWithoutExtension(sceneAssetPath);
+                    var sceneProgress = totalScenes > 0
+                        ? (float)sceneIndex / totalScenes * SceneWalkPhaseRatio
+                        : 0f;
+
+                    if (EditorUtility.DisplayCancelableProgressBar(
+                        ProgressBarTitle,
+                        $"シーンを処理中 ({sceneIndex + 1}/{totalScenes}): {displaySceneName}",
+                        sceneProgress))
+                    {
+                        // シーン境界でキャンセルされたため、途中結果は保存せず終了する
+                        return false;
+                    }
+
+                    var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(sceneAssetPath);
+                    SceneProcessor.ProcessSceneTemporarily(sceneAssetPath, (currentScene) =>
+                    {
+                        ProcessScene(
+                            sceneAsset,
+                            currentScene,
+                            avatarRenderer,
+                            previousAvatarDatabaseEntries,
+                            sceneEntries,
+                            avatarDatabaseSources,
+                            withRegenerateThumbnails);
+                    });
+                }
+
+                // 不要となったファイルの削除
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, "不要なファイルを整理中...", 0.93f);
+                CleanupFiles(previousAvatarDatabaseEntries, avatarDatabaseSources);
+
+                avatarCatalogDatabase.orderedScenes = sceneEntries;
+                avatarCatalogDatabase.avatars = avatarDatabaseSources
+                    .Select(source => source.GetAvatarDatabaseEntry())
+                    .ToList();
+
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, "データベースを保存中...", 0.96f);
+                AvatarDatabase.Save(avatarCatalogDatabase);
+
+                // 検索インデックスの最新化
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, "検索インデックスを更新中...", 0.98f);
+                RefreshIndexes(avatarDatabaseSources.Select(source => source.GetAvatarSearchIndexSource()));
+
+                AssetDatabase.Refresh();
+
+                return true;
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
+        }
+
+        private void ProcessScene(
+            SceneAsset sceneAsset,
+            UnityEngine.SceneManagement.Scene currentScene,
+            AvatarRenderer avatarRenderer,
+            Dictionary<string, AvatarDatabase.AvatarDatabaseEntry> previousAvatarDatabaseEntries,
+            List<AvatarDatabase.SceneEntry> sceneEntries,
+            List<AvatarDatabaseSource> avatarDatabaseSources,
+            bool withRegenerateThumbnails)
+        {
+            sceneEntries.Add(new AvatarDatabase.SceneEntry()
+            {
+                sceneName = sceneAsset.name,
+                sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
+            });
+
+            var currentSceneRootObjects = currentScene.GetRootGameObjects();
+
+            var extractedAvatars = currentSceneRootObjects
+                .Where(obj => obj != null && obj.GetComponent<VRCAvatarDescriptor>() != null)
+                .Select(avatarObject =>
+                {
+                    // マイグレーション処理
+                    AvatarMetadataUtil.MigrateAvatarMetadataSettings(avatarObject);
+                    migrateAvatarMetadata.Do(avatarObject);
+
+                    return (AvatarRootObject: avatarObject, ExtractedAvatarData: ExtractAvatarData(avatarObject));
                 });
 
-                var currentSceneRootObjects = currentScene.GetRootGameObjects();
-
-                var extractedAvatars = currentSceneRootObjects
-                    .Where(obj => obj != null && obj.GetComponent<VRCAvatarDescriptor>() != null)
-                    .Select(avatarObject =>
-                    {
-                        // マイグレーション処理
-                        AvatarMetadataUtil.MigrateAvatarMetadataSettings(avatarObject);
-                        migrateAvatarMetadata.Do(avatarObject);
-
-                        return (AvatarRootObject: avatarObject, ExtractedAvatarData: ExtractAvatarData(avatarObject));
-                    });
-
-                foreach (var extractedAvatar in extractedAvatars)
+            foreach (var extractedAvatar in extractedAvatars)
+            {
+                if (!previousAvatarDatabaseEntries.ContainsKey(extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId))
                 {
-                    if (!previousAvatarDatabaseEntries.ContainsKey(extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId))
+                    // 未追加のアバター
+                    var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, extractedAvatar.AvatarRootObject);
+                    try
                     {
-                        // 未追加のアバター
+                        avatarDatabaseSources.Add(new AvatarDatabaseSource()
+                        {
+                            avatarGlobalObjectId = extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId,
+                            avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
+                            sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
+                            thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString(),
+                            avatarMetadata = extractedAvatar.ExtractedAvatarData.avatarMetadata,
+                            dependencyPaths = extractedAvatar.ExtractedAvatarData.dependencyPaths,
+                        });
+                    }
+                    finally
+                    {
+                        UnityEngine.Object.DestroyImmediate(thumbnail);
+                    }
+                }
+                else
+                {
+                    // 既知のアバター情報の更新
+                    var previousAvatarEntry = previousAvatarDatabaseEntries[extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId];
+
+                    var avatarDatabaseSource = new AvatarDatabaseSource()
+                    {
+                        avatarGlobalObjectId = previousAvatarEntry.avatarGlobalObjectId,
+                        avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
+                        sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
+                        thumbnailImageGuid = previousAvatarEntry.thumbnailImageGuid,
+                        avatarMetadata = extractedAvatar.ExtractedAvatarData.avatarMetadata,
+                        dependencyPaths = extractedAvatar.ExtractedAvatarData.dependencyPaths,
+                    };
+
+                    var avatarThumbnailImageExists = IsAssetFileExists(avatarDatabaseSource.thumbnailImageGuid);
+
+                    if (avatarThumbnailImageExists && GUID.TryParse(avatarDatabaseSource.thumbnailImageGuid, out var thumbnailImageGuid))
+                    {
+                        // 既存のアバターサムネイル画像に対する処理
+                        if (withRegenerateThumbnails)
+                        {
+                            // 古いサムネイル画像を削除
+                            AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
+                            avatarDatabaseSource.thumbnailImageGuid = "";
+                        }
+                        else
+                        {
+                            // サムネイル画像のファイル名を更新する
+                            AvatarThumbnailUtil.RenameToGUID(thumbnailImageGuid);
+                        }
+                    }
+
+                    if (!avatarThumbnailImageExists || withRegenerateThumbnails)
+                    {
+                        // サムネイル画像を新規作成または更新する
                         var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, extractedAvatar.AvatarRootObject);
                         try
                         {
-                            avatarDatabaseSources.Add(new AvatarDatabaseSource()
+                            if (!string.IsNullOrEmpty(avatarDatabaseSource.thumbnailImageGuid))
                             {
-                                avatarGlobalObjectId = extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId,
-                                avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
-                                sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
-                                thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString(),
-                                avatarMetadata = extractedAvatar.ExtractedAvatarData.avatarMetadata,
-                                dependencyPaths = extractedAvatar.ExtractedAvatarData.dependencyPaths,
-                            });
+                                AvatarThumbnailUtil.DeleteAvatarThumbnailImage(avatarDatabaseSource.thumbnailImageGuid);
+                                avatarDatabaseSource.thumbnailImageGuid = "";
+                            }
+
+                            avatarDatabaseSource.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
                         }
                         finally
                         {
                             UnityEngine.Object.DestroyImmediate(thumbnail);
                         }
                     }
-                    else
-                    {
-                        // 既知のアバター情報の更新
-                        var previousAvatarEntry = previousAvatarDatabaseEntries[extractedAvatar.ExtractedAvatarData.avatarGlobalObjectId];
 
-                        var avatarDatabaseSource = new AvatarDatabaseSource()
-                        {
-                            avatarGlobalObjectId = previousAvatarEntry.avatarGlobalObjectId,
-                            avatarObjectName = extractedAvatar.ExtractedAvatarData.avatarObjectName,
-                            sceneAssetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sceneAsset)),
-                            thumbnailImageGuid = previousAvatarEntry.thumbnailImageGuid,
-                            avatarMetadata = extractedAvatar.ExtractedAvatarData.avatarMetadata,
-                            dependencyPaths = extractedAvatar.ExtractedAvatarData.dependencyPaths,
-                        };
-
-                        var avatarThumbnailImageExists = IsAssetFileExists(avatarDatabaseSource.thumbnailImageGuid);
-
-                        if (avatarThumbnailImageExists && GUID.TryParse(avatarDatabaseSource.thumbnailImageGuid, out var thumbnailImageGuid))
-                        {
-                            // 既存のアバターサムネイル画像に対する処理
-                            if (withRegenerateThumbnails)
-                            {
-                                // 古いサムネイル画像を削除
-                                AvatarThumbnailUtil.DeleteAvatarThumbnailImage(thumbnailImageGuid);
-                                avatarDatabaseSource.thumbnailImageGuid = "";
-                            }
-                            else
-                            {
-                                // サムネイル画像のファイル名を更新する
-                                AvatarThumbnailUtil.RenameToGUID(thumbnailImageGuid);
-                            }
-                        }
-
-                        if (!avatarThumbnailImageExists || withRegenerateThumbnails)
-                        {
-                            // サムネイル画像を新規作成または更新する
-                            var thumbnail = AvatarThumbnailUtil.RenderAvatarThumbnail(avatarRenderer, extractedAvatar.AvatarRootObject);
-                            try
-                            {
-                                if (!string.IsNullOrEmpty(avatarDatabaseSource.thumbnailImageGuid))
-                                {
-                                    AvatarThumbnailUtil.DeleteAvatarThumbnailImage(avatarDatabaseSource.thumbnailImageGuid);
-                                    avatarDatabaseSource.thumbnailImageGuid = "";
-                                }
-
-                                avatarDatabaseSource.thumbnailImageGuid = AvatarThumbnailUtil.StoreAvatarThumbnailImage(thumbnail).ToString();
-                            }
-                            finally
-                            {
-                                UnityEngine.Object.DestroyImmediate(thumbnail);
-                            }
-                        }
-
-                        avatarDatabaseSources.Add(avatarDatabaseSource);
-                    }
+                    avatarDatabaseSources.Add(avatarDatabaseSource);
                 }
-            });
-
-            // 不要となったファイルの削除
-            CleanupFiles(previousAvatarDatabaseEntries, avatarDatabaseSources);
-
-            avatarCatalogDatabase.orderedScenes = sceneEntries;
-            avatarCatalogDatabase.avatars = avatarDatabaseSources
-                .Select(source => source.GetAvatarDatabaseEntry())
-                .ToList();
-
-            AvatarDatabase.Save(avatarCatalogDatabase);
-
-            // 検索インデックスの最新化
-            RefreshIndexes(avatarDatabaseSources.Select(source => source.GetAvatarSearchIndexSource()));
-
-            AssetDatabase.Refresh();
+            }
         }
 
         private bool IsAssetFileExists(string guid)
