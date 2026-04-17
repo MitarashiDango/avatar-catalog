@@ -26,7 +26,8 @@ namespace MitarashiDango.AvatarCatalog
         private static readonly string _gridLayoutListItemUxmlGuid = "74e74187aebb7f6469bfc215a2ec332d";
 
         private static readonly int MinColumnSpacing = 10;
-        private static readonly char[] SearchWordsDelimiterChars = { ' ' };
+        // 半角スペース、全角スペース (U+3000)、タブを区切り文字とする
+        private static readonly char[] SearchWordsDelimiterChars = { ' ', '\u3000', '\t' };
 
         private VisualElement _avatarListView;
         private VisualElement _initialSetupView;
@@ -460,7 +461,16 @@ namespace MitarashiDango.AvatarCatalog
 
             if (searchText.Length > 0)
             {
-                var searchWords = searchText.ToLower().Split(SearchWordsDelimiterChars);
+                // カタカナ/ひらがな同一視、全角/半角統一、カルチャ非依存の小文字化を行ったうえで、
+                // 区切り文字で分割し、空エントリは除外する
+                var searchWords = SearchTextNormalizer.Normalize(searchText)
+                    .Split(SearchWordsDelimiterChars, StringSplitOptions.RemoveEmptyEntries);
+
+                if (searchWords.Length == 0)
+                {
+                    return result;
+                }
+
                 if (_avatarSearchIndex == null)
                 {
                     _avatarSearchIndex = AvatarSearchIndex.LoadOrCreateFile();

@@ -149,10 +149,11 @@ namespace MitarashiDango.AvatarCatalog
 
             private void SetValues(List<string> values)
             {
+                // クエリ側と揃えた正規化 (FormKC + 小文字化 + カタカナ→ひらがな)
                 _values = values
                     .Where(v => !string.IsNullOrEmpty(v))
                     .Distinct()
-                    .Select(value => value.ToLower())
+                    .Select(value => SearchTextNormalizer.Normalize(value))
                     .ToList();
             }
         }
