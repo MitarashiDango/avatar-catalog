@@ -86,17 +86,49 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
+            if (targetUrl.Host != "booth.pm" && !targetUrl.Host.EndsWith(".booth.pm"))
+            {
+                EditorUtility.DisplayDialog("エラー", "Booth (booth.pm) のURLを入力してください。", "OK");
+                return;
+            }
+
             try
             {
-                if (targetUrl.Host == "booth.pm" || targetUrl.Host.EndsWith(".booth.pm"))
+                var item = FetchProductDetailsFromBooth(targetUrl);
+                if (item == null)
                 {
-                    var item = FetchProductDetailsFromBooth(targetUrl);
-                    ApplyFromBoothItem(item);
+                    EditorUtility.DisplayDialog("エラー", "指定されたURLから商品IDを取得できませんでした。URLを確認してください。", "OK");
+                    return;
                 }
+
+                ApplyFromBoothItem(item);
+            }
+            catch (WebException e)
+            {
+                Debug.LogError(e);
+
+                string statusInfo;
+                if (e.Response is HttpWebResponse httpResponse)
+                {
+                    statusInfo = $"HTTPステータス: {(int)httpResponse.StatusCode} ({httpResponse.StatusCode})";
+                }
+                else
+                {
+                    statusInfo = $"通信ステータス: {e.Status}";
+                }
+
+                EditorUtility.DisplayDialog(
+                    "エラー",
+                    $"Booth から製品情報を取得できませんでした。\n{statusInfo}\n\n{e.Message}",
+                    "OK");
             }
             catch (Exception e)
             {
                 Debug.LogError(e);
+                EditorUtility.DisplayDialog(
+                    "エラー",
+                    $"製品情報の取得中に予期しないエラーが発生しました。\n\n{e.Message}",
+                    "OK");
             }
         }
 
