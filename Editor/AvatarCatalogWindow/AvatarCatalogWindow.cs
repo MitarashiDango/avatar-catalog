@@ -79,9 +79,13 @@ namespace MitarashiDango.AvatarCatalog
                 return true;
             }
 
-            if (!EditorSceneManager.SaveOpenScenes())
+            // Single モード切替で現在のシーンが閉じられる場合に備え、ユーザーに保存可否を確認する
+            if (mode == OpenSceneMode.Single)
             {
-                return false;
+                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                {
+                    return false;
+                }
             }
 
             scene = EditorSceneManager.OpenScene(scenePath, mode);
@@ -859,15 +863,9 @@ namespace MitarashiDango.AvatarCatalog
         {
             var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
-            // Additiveでロード
-            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Additive, out var scene))
-            {
-                return;
-            }
-
             using var avatarRenderer = new AvatarRenderer();
 
-            try
+            SceneProcessor.ProcessSceneTemporarily(scenePath, (scene) =>
             {
                 if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
                 {
@@ -915,27 +913,14 @@ namespace MitarashiDango.AvatarCatalog
                 _thumbnailCache.Remove(avatar.thumbnailImageGuid);
                 AvatarDatabase.Save(_avatarCatalogDatabase);
                 AssetDatabase.Refresh();
-            }
-            finally
-            {
-                if (scene != EditorSceneManager.GetActiveScene())
-                {
-                    EditorSceneManager.CloseScene(scene, true);
-                }
-            }
+            });
         }
 
         private void AddAvatarCatalogThumbnailSettingsComponent(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
             var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
-            // Additiveでロード
-            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Additive, out var scene))
-            {
-                return;
-            }
-
-            try
+            SceneProcessor.ProcessSceneTemporarily(scenePath, (scene) =>
             {
                 if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
                 {
@@ -960,14 +945,7 @@ namespace MitarashiDango.AvatarCatalog
                 EditorUtility.SetDirty(avatarObject);
 
                 EditorSceneManager.SaveScene(scene);
-            }
-            finally
-            {
-                if (scene != EditorSceneManager.GetActiveScene())
-                {
-                    EditorSceneManager.CloseScene(scene, true);
-                }
-            }
+            });
         }
 
         private void AddAvatarMetadataComponent(AvatarDatabase.AvatarDatabaseEntry avatar)
