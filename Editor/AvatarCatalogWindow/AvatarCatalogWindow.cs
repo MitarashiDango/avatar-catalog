@@ -1065,7 +1065,6 @@ namespace MitarashiDango.AvatarCatalog
 
             _preferences.avatarCatalogItemSize = _gridItemSize;
             Preferences.Save(_preferences);
-            AssetDatabase.Refresh();
         }
 
         private void OnGeometryChanged(GeometryChangedEvent e)
