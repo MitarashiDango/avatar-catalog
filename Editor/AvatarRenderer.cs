@@ -7,6 +7,24 @@ namespace MitarashiDango.AvatarCatalog
 {
     public class AvatarRenderer : System.IDisposable
     {
+        // カメラ設定のデフォルト値
+        private const int CameraDepth = -1;
+        private const float CameraStereoSeparation = 0.022f;
+        private const float CameraStereoConvergence = 10f;
+        private const float CameraFarClipPlane = 100f;
+        private const float CameraNearClipPlane = 0.001f;
+        private const float CameraAspect = 1f;
+
+        // Render Texture のデプスバッファ深度 (ビット数)
+        private const int RenderTextureDepthBits = 32;
+
+        // デフォルトライトの陰影パラメータ
+        private const float DefaultLightIntensity = 1f;
+        private const float DefaultLightShadowStrength = 1f;
+        private const float DefaultLightShadowBias = 0.05f;
+        private const float DefaultLightShadowNormalBias = 0.4f;
+        private const float DefaultLightShadowNearPlane = 0.2f;
+
         private PreviewRenderUtility _previewRenderUtility;
         public RenderTexture renderTexture { get; private set; }
 
@@ -34,7 +52,7 @@ namespace MitarashiDango.AvatarCatalog
         public Texture2D Render(GameObject avatarRootObject, CameraSetting cameraSetting, int width, int height, Dictionary<string, float> defaultBlendShapes, Dictionary<string, float> animationClipBlendShapes, bool allowHDR)
         {
             var format = allowHDR ? DefaultFormat.HDR : DefaultFormat.LDR;
-            var renderTexture = new RenderTexture(width, height, 32, format);
+            var renderTexture = new RenderTexture(width, height, RenderTextureDepthBits, format);
 
             try
             {
@@ -140,15 +158,15 @@ namespace MitarashiDango.AvatarCatalog
         {
             _previewRenderUtility.camera.clearFlags = CameraClearFlags.SolidColor;
             _previewRenderUtility.camera.backgroundColor = cameraSetting.BackgroundColor;
-            _previewRenderUtility.camera.depth = -1;
+            _previewRenderUtility.camera.depth = CameraDepth;
             _previewRenderUtility.camera.useOcclusionCulling = true;
             _previewRenderUtility.camera.allowMSAA = true;
             _previewRenderUtility.camera.allowHDR = allowHDR;
-            _previewRenderUtility.camera.aspect = 1;
-            _previewRenderUtility.camera.stereoSeparation = 0.022f;
-            _previewRenderUtility.camera.stereoConvergence = 10;
-            _previewRenderUtility.camera.farClipPlane = 100;
-            _previewRenderUtility.camera.nearClipPlane = 0.001f;
+            _previewRenderUtility.camera.aspect = CameraAspect;
+            _previewRenderUtility.camera.stereoSeparation = CameraStereoSeparation;
+            _previewRenderUtility.camera.stereoConvergence = CameraStereoConvergence;
+            _previewRenderUtility.camera.farClipPlane = CameraFarClipPlane;
+            _previewRenderUtility.camera.nearClipPlane = CameraNearClipPlane;
             _previewRenderUtility.camera.transform.localScale = cameraSetting.Scale;
             _previewRenderUtility.camera.transform.rotation = cameraSetting.Rotation;
             _previewRenderUtility.camera.targetTexture = renderTexture;
@@ -192,22 +210,22 @@ namespace MitarashiDango.AvatarCatalog
 
         private void SetupDefaultLights()
         {
-            _previewRenderUtility.lights[0].color = new Color(1, 1, 1, 1f);
+            _previewRenderUtility.lights[0].color = Color.white;
             _previewRenderUtility.lights[0].renderMode = LightRenderMode.Auto;
             _previewRenderUtility.lights[0].type = LightType.Directional;
-            _previewRenderUtility.lights[0].intensity = 1;
-            _previewRenderUtility.lights[0].shadowStrength = 1f;
-            _previewRenderUtility.lights[0].shadowBias = 0.05f;
-            _previewRenderUtility.lights[0].shadowNormalBias = 0.4f;
-            _previewRenderUtility.lights[0].shadowNearPlane = 0.2f;
+            _previewRenderUtility.lights[0].intensity = DefaultLightIntensity;
+            _previewRenderUtility.lights[0].shadowStrength = DefaultLightShadowStrength;
+            _previewRenderUtility.lights[0].shadowBias = DefaultLightShadowBias;
+            _previewRenderUtility.lights[0].shadowNormalBias = DefaultLightShadowNormalBias;
+            _previewRenderUtility.lights[0].shadowNearPlane = DefaultLightShadowNearPlane;
 
-            _previewRenderUtility.lights[1].color = new Color(1, 1, 1, 1f);
+            _previewRenderUtility.lights[1].color = Color.white;
             _previewRenderUtility.lights[1].renderMode = LightRenderMode.Auto;
-            _previewRenderUtility.lights[1].intensity = 1;
-            _previewRenderUtility.lights[1].shadowStrength = 1f;
-            _previewRenderUtility.lights[1].shadowBias = 0.05f;
-            _previewRenderUtility.lights[1].shadowNormalBias = 0.4f;
-            _previewRenderUtility.lights[1].shadowNearPlane = 0.2f;
+            _previewRenderUtility.lights[1].intensity = DefaultLightIntensity;
+            _previewRenderUtility.lights[1].shadowStrength = DefaultLightShadowStrength;
+            _previewRenderUtility.lights[1].shadowBias = DefaultLightShadowBias;
+            _previewRenderUtility.lights[1].shadowNormalBias = DefaultLightShadowNormalBias;
+            _previewRenderUtility.lights[1].shadowNearPlane = DefaultLightShadowNearPlane;
         }
 
         public class CameraSetting

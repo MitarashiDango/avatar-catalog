@@ -26,6 +26,10 @@ namespace MitarashiDango.AvatarCatalog
         private static readonly string _gridLayoutListItemUxmlGuid = "74e74187aebb7f6469bfc215a2ec332d";
 
         private static readonly int MinColumnSpacing = 10;
+        // グリッドのサムネイル下部に表示するアバター名ラベルの高さ (px)。fixedItemHeight = サムネイル高さ + このラベル分
+        private static readonly int GridItemLabelHeight = 15;
+        // Avatar List ウィンドウの最小サイズ
+        private static readonly Vector2 DefaultMinWindowSize = new Vector2(800, 600);
         // 半角スペース、全角スペース (U+3000)、タブを区切り文字とする
         private static readonly char[] SearchWordsDelimiterChars = { ' ', '\u3000', '\t' };
 
@@ -50,7 +54,7 @@ namespace MitarashiDango.AvatarCatalog
         public static void ShowWindow()
         {
             var window = GetWindow<AvatarCatalogWindow>("Avatar List");
-            window.minSize = new Vector2(800, 600);
+            window.minSize = DefaultMinWindowSize;
         }
 
         private void OnEnable()
@@ -295,7 +299,7 @@ namespace MitarashiDango.AvatarCatalog
             _currentMaxColumns = Mathf.Max(1, Mathf.FloorToInt((scrollViewWidth - MinColumnSpacing) / (_gridItemSize + MinColumnSpacing)));
             var rowCount = Mathf.CeilToInt((float)_filteredAvatars.Count / _currentMaxColumns);
 
-            _avatarGridListView.fixedItemHeight = _gridItemSize + 15;
+            _avatarGridListView.fixedItemHeight = _gridItemSize + GridItemLabelHeight;
             _avatarGridListView.itemsSource = Enumerable.Range(0, rowCount).ToList();
             _avatarGridListView.Rebuild();
         }
