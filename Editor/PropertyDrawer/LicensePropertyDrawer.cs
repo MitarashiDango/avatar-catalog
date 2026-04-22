@@ -19,7 +19,9 @@ namespace MitarashiDango.AvatarCatalog
                 return new VisualElement();
             }
 
-            return mainUxmlAsset.CloneTree();
+            var root = mainUxmlAsset.CloneTree();
+            UxmlLocalizer.Apply(root);
+            return root;
         }
 
         private VisualTreeAsset LoadMainUxmlAsset()

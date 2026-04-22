@@ -44,7 +44,7 @@ namespace MitarashiDango.AvatarCatalog
 
         internal static AvatarThumbnailPreviewWindow ShowWindowInternal()
         {
-            var window = GetWindow<AvatarThumbnailPreviewWindow>("Avatar Thumbnail Preview");
+            var window = GetWindow<AvatarThumbnailPreviewWindow>(AcL10n.Tr("window.thumbnail_preview.title"));
             window.minSize = DefaultMinWindowSize;
             return window;
         }
@@ -105,6 +105,7 @@ namespace MitarashiDango.AvatarCatalog
             FontCache.ApplyPreferredFont(rootVisualElement);
 
             var previewAvatarThumbnailRoot = mainUxmlAsset.CloneTree();
+            UxmlLocalizer.Apply(previewAvatarThumbnailRoot);
 
             _avatarDescriptorObjectField = previewAvatarThumbnailRoot.Q<ObjectField>("preview-target-avatar-object");
             _avatarDescriptorObjectField.RegisterValueChangedCallback(OnAvatarDescriptorObjectFieldValueChanged);

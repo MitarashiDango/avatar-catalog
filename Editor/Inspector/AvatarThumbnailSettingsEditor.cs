@@ -56,6 +56,7 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var root = mainUxmlAsset.CloneTree();
+            UxmlLocalizer.Apply(root);
 
             FontCache.ApplyPreferredFont(root);
             SetupCameraPositionOffsetField(root);

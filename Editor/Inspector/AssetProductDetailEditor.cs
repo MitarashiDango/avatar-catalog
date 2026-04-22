@@ -42,6 +42,7 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             var root = mainUxmlAsset.CloneTree();
+            UxmlLocalizer.Apply(root);
 
             FontCache.ApplyPreferredFont(root);
 
@@ -70,11 +71,18 @@ namespace MitarashiDango.AvatarCatalog
         {
             if (string.IsNullOrEmpty(_productUrlField.value))
             {
-                EditorUtility.DisplayDialog("エラー", "URLを入力してください", "OK");
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.url_empty"),
+                    AcL10n.Tr("dialog.button.ok"));
                 return;
             }
 
-            if (!EditorUtility.DisplayDialog("確認", "製品情報を取得しますか？", "はい", "いいえ"))
+            if (!EditorUtility.DisplayDialog(
+                AcL10n.Tr("dialog.title.confirm"),
+                AcL10n.Tr("confirm.fetch_product_info"),
+                AcL10n.Tr("dialog.button.yes"),
+                AcL10n.Tr("dialog.button.no")))
             {
                 return;
             }
@@ -82,13 +90,19 @@ namespace MitarashiDango.AvatarCatalog
             var uriCreated = Uri.TryCreate(_productUrlField.value, UriKind.Absolute, out var targetUrl);
             if (!uriCreated)
             {
-                EditorUtility.DisplayDialog("エラー", "入力されたURLが正しくありません", "OK");
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.url_invalid"),
+                    AcL10n.Tr("dialog.button.ok"));
                 return;
             }
 
             if (targetUrl.Host != "booth.pm" && !targetUrl.Host.EndsWith(".booth.pm"))
             {
-                EditorUtility.DisplayDialog("エラー", "Booth (booth.pm) のURLを入力してください。", "OK");
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.booth_url_required"),
+                    AcL10n.Tr("dialog.button.ok"));
                 return;
             }
 
@@ -97,7 +111,10 @@ namespace MitarashiDango.AvatarCatalog
                 var item = FetchProductDetailsFromBooth(targetUrl);
                 if (item == null)
                 {
-                    EditorUtility.DisplayDialog("エラー", "指定されたURLから商品IDを取得できませんでした。URLを確認してください。", "OK");
+                    EditorUtility.DisplayDialog(
+                        AcL10n.Tr("dialog.title.error"),
+                        AcL10n.Tr("error.booth_item_id_not_found"),
+                        AcL10n.Tr("dialog.button.ok"));
                     return;
                 }
 
@@ -110,25 +127,25 @@ namespace MitarashiDango.AvatarCatalog
                 string statusInfo;
                 if (e.Response is HttpWebResponse httpResponse)
                 {
-                    statusInfo = $"HTTPステータス: {(int)httpResponse.StatusCode} ({httpResponse.StatusCode})";
+                    statusInfo = AcL10n.Tr("error.booth_http_status", (int)httpResponse.StatusCode, httpResponse.StatusCode);
                 }
                 else
                 {
-                    statusInfo = $"通信ステータス: {e.Status}";
+                    statusInfo = AcL10n.Tr("error.booth_comm_status", e.Status);
                 }
 
                 EditorUtility.DisplayDialog(
-                    "エラー",
-                    $"Booth から製品情報を取得できませんでした。\n{statusInfo}\n\n{e.Message}",
-                    "OK");
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.booth_fetch_failed", statusInfo, e.Message),
+                    AcL10n.Tr("dialog.button.ok"));
             }
             catch (Exception e)
             {
                 Debug.LogError(e);
                 EditorUtility.DisplayDialog(
-                    "エラー",
-                    $"製品情報の取得中に予期しないエラーが発生しました。\n\n{e.Message}",
-                    "OK");
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.booth_unexpected", e.Message),
+                    AcL10n.Tr("dialog.button.ok"));
             }
         }
 

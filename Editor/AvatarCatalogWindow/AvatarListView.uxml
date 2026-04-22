@@ -2,10 +2,10 @@
     <Style src="project://database/Packages/com.matcha-soft.avatar-catalog/Editor/AvatarCatalogWindow/AvatarListView.uss?fileID=7433441132597879392&amp;guid=f22464d79547e7f499a0a1a485b5ec61&amp;type=3#AvatarListView" />
     <uie:Toolbar name="avatar-list-view-header">
         <uie:ToolbarSearchField name="search-text-field" />
-        <uie:ToolbarMenu name="avatar-catalog-menu" text="Menu" />
+        <uie:ToolbarMenu name="avatar-catalog-menu" text="@@toolbar.menu@@" />
     </uie:Toolbar>
     <ui:ListView name="avatar-grid-list-view" virtualization-method="FixedHeight" selection-type="None" show-border="false" show-alternating-row-backgrounds="None" />
-    <ui:Label name="no-results-label" text="検索結果が見つかりません" />
+    <ui:Label name="no-results-label" text="@@label.no_search_results@@" />
     <ui:VisualElement name="avatar-list-view-footer">
         <ui:Slider name="resize-grid-item-slider" high-value="256" low-value="128" />
     </ui:VisualElement>
