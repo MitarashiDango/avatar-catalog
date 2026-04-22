@@ -10,7 +10,7 @@
         <ui:VisualElement name="thumbnail-container">
             <ui:Image name="avatar-thumbnail-image" />
         </ui:VisualElement>
-        <ui:Vector3Field label="カメラ座標オフセット" name="camera-position-offset-field" binding-path="cameraPositionOffset" />
-        <ui:Vector3Field label="カメラ角度" name="camera-rotation-field" />
+        <ui:Vector3Field label="@@field.thumbnail.camera_position_offset@@" name="camera-position-offset-field" binding-path="cameraPositionOffset" />
+        <ui:Vector3Field label="@@field.thumbnail.camera_rotation@@" name="camera-rotation-field" />
     </ui:ScrollView>
 </ui:UXML>

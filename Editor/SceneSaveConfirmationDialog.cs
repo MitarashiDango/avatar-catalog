@@ -59,7 +59,7 @@ namespace MitarashiDango.AvatarCatalog
         public static (SceneSaveChoice choice, bool remember) Open(string sceneName)
         {
             var window = CreateInstance<SceneSaveConfirmationWindow>();
-            window.titleContent = new GUIContent("シーンの保存確認");
+            window.titleContent = new GUIContent(AcL10n.Tr("scene_save_dialog.title"));
             window._sceneName = sceneName;
             window.minSize = new Vector2(440, 170);
             window.maxSize = new Vector2(440, 170);
@@ -71,15 +71,15 @@ namespace MitarashiDango.AvatarCatalog
         {
             EditorGUILayout.Space(10);
             EditorGUILayout.LabelField(
-                $"シーン \"{_sceneName}\" に未保存の変更があります。",
+                AcL10n.Tr("scene_save_dialog.message1", _sceneName),
                 EditorStyles.wordWrappedLabel);
             EditorGUILayout.LabelField(
-                "処理中に行われた変更を保存しますか？",
+                AcL10n.Tr("scene_save_dialog.message2"),
                 EditorStyles.wordWrappedLabel);
             EditorGUILayout.Space(8);
 
             _remember = EditorGUILayout.ToggleLeft(
-                "以降は確認せず同じ選択を適用する（エディター再起動まで有効）",
+                AcL10n.Tr("scene_save_dialog.remember_choice"),
                 _remember);
 
             EditorGUILayout.Space(10);
@@ -87,13 +87,13 @@ namespace MitarashiDango.AvatarCatalog
             using (new EditorGUILayout.HorizontalScope())
             {
                 GUILayout.FlexibleSpace();
-                if (GUILayout.Button("保存する", GUILayout.MinWidth(100), GUILayout.Height(24)))
+                if (GUILayout.Button(AcL10n.Tr("scene_save_dialog.save"), GUILayout.MinWidth(100), GUILayout.Height(24)))
                 {
                     _result = SceneSaveChoice.Save;
                     _rememberResult = _remember;
                     Close();
                 }
-                if (GUILayout.Button("保存しない", GUILayout.MinWidth(100), GUILayout.Height(24)))
+                if (GUILayout.Button(AcL10n.Tr("scene_save_dialog.dont_save"), GUILayout.MinWidth(100), GUILayout.Height(24)))
                 {
                     _result = SceneSaveChoice.Skip;
                     _rememberResult = _remember;

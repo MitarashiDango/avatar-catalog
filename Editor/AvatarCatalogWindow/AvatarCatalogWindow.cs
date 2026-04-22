@@ -53,7 +53,7 @@ namespace MitarashiDango.AvatarCatalog
         [MenuItem("Tools/Avatar Catalog/Avatar List")]
         public static void ShowWindow()
         {
-            var window = GetWindow<AvatarCatalogWindow>("Avatar List");
+            var window = GetWindow<AvatarCatalogWindow>(AcL10n.Tr("window.avatar_list.title"));
             window.minSize = DefaultMinWindowSize;
         }
 
@@ -64,10 +64,13 @@ namespace MitarashiDango.AvatarCatalog
             _preferences = Preferences.Load();
 
             ApplyFromPreferences();
+
+            AcL10n.OnLanguageChanged += OnLanguageChanged;
         }
 
         private void OnDisable()
         {
+            AcL10n.OnLanguageChanged -= OnLanguageChanged;
             // ウィンドウ非表示時・アセンブリリロード前に参照を解放し、キャッシュの無制限な膨張を防ぐ
             _thumbnailCache.Clear();
         }
@@ -75,7 +78,16 @@ namespace MitarashiDango.AvatarCatalog
         private void OnDestroy()
         {
             EditorSceneManager.sceneOpened -= OnSceneOpened;
+            AcL10n.OnLanguageChanged -= OnLanguageChanged;
             _thumbnailCache.Clear();
+        }
+
+        private void OnLanguageChanged()
+        {
+            // 言語切替時にウィンドウタイトルと UI を再構築する
+            titleContent = new GUIContent(AcL10n.Tr("window.avatar_list.title"));
+            rootVisualElement.Clear();
+            CreateGUI();
         }
 
         private void ApplyFromPreferences()
@@ -193,6 +205,7 @@ namespace MitarashiDango.AvatarCatalog
             }
 
             mainUxmlAsset.CloneTree(rootVisualElement);
+            UxmlLocalizer.Apply(rootVisualElement);
 
             return true;
         }
@@ -232,8 +245,9 @@ namespace MitarashiDango.AvatarCatalog
             searchTextField.RegisterValueChangedCallback(e => OnSearchTextFieldValueChanged(e));
 
             var avatarCatalogMenu = header.Q<ToolbarMenu>("avatar-catalog-menu");
-            avatarCatalogMenu.menu.AppendAction("Update avatar catalog", action => ReloadAvatarList());
-            avatarCatalogMenu.menu.AppendAction("Update avatar catalog (with regenerate thumbnails)", action => ReloadAvatarList(true));
+            avatarCatalogMenu.text = AcL10n.Tr("toolbar.menu");
+            avatarCatalogMenu.menu.AppendAction(AcL10n.Tr("menu.update_avatar_database"), action => ReloadAvatarList());
+            avatarCatalogMenu.menu.AppendAction(AcL10n.Tr("menu.update_avatar_database_with_thumbnails"), action => ReloadAvatarList(true));
 
             var resizeGridItemSlider = footer.Q<Slider>("resize-grid-item-slider");
             resizeGridItemSlider.value = _gridItemSize;
@@ -335,15 +349,15 @@ namespace MitarashiDango.AvatarCatalog
             {
                 if (gridItem.userData is AvatarDatabase.AvatarDatabaseEntry avatar)
                 {
-                    e.menu.AppendAction("Switch to active", action => ChangeToActiveAvatar(avatar, out _));
-                    e.menu.AppendAction("Generate avatar thumbnail image", action =>
+                    e.menu.AppendAction(AcL10n.Tr("context.switch_active"), action => ChangeToActiveAvatar(avatar, out _));
+                    e.menu.AppendAction(AcL10n.Tr("context.generate_thumbnail"), action =>
                     {
                         GenerateAvatarThumbnail(avatar);
                         ReloadAvatars();
                     });
-                    e.menu.AppendAction("Add avatar thumbnail settings component", action => AddAvatarCatalogThumbnailSettingsComponent(avatar));
-                    e.menu.AppendAction("Add avatar metadata component", action => AddAvatarMetadataComponent(avatar));
-                    e.menu.AppendAction("Build and Publish avatar", action => { _ = BuildAndPublishAvatarSafe(avatar); });
+                    e.menu.AppendAction(AcL10n.Tr("context.add_thumbnail_settings"), action => AddAvatarCatalogThumbnailSettingsComponent(avatar));
+                    e.menu.AppendAction(AcL10n.Tr("context.add_metadata"), action => AddAvatarMetadataComponent(avatar));
+                    e.menu.AppendAction(AcL10n.Tr("context.build_and_publish"), action => { _ = BuildAndPublishAvatarSafe(avatar); });
                 }
             });
             gridItem.AddManipulator(manipulator);
@@ -492,7 +506,7 @@ namespace MitarashiDango.AvatarCatalog
             return result;
         }
 
-        private const string BuildAndPublishProgressTitle = "アバターのビルド・アップロード";
+        private static string BuildAndPublishProgressTitle => AcL10n.Tr("progress.build_publish.title");
 
         private async Task BuildAndPublishAvatarSafe(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
@@ -503,16 +517,19 @@ namespace MitarashiDango.AvatarCatalog
             catch (OperationCanceledException)
             {
                 EditorUtility.ClearProgressBar();
-                EditorUtility.DisplayDialog("情報", "アバターのアップロードをキャンセルしました。", "OK");
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.info"),
+                    AcL10n.Tr("info.upload_cancelled"),
+                    AcL10n.Tr("dialog.button.ok"));
             }
             catch (Exception e)
             {
                 Debug.LogError(e);
                 EditorUtility.ClearProgressBar();
                 EditorUtility.DisplayDialog(
-                    "エラー",
-                    $"アバターのビルドおよびアップロード中に予期しないエラーが発生しました。\n\n{e.Message}",
-                    "OK");
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.unexpected_build_upload", e.Message),
+                    AcL10n.Tr("dialog.button.ok"));
             }
             finally
             {
@@ -522,7 +539,7 @@ namespace MitarashiDango.AvatarCatalog
 
         private async Task BuildAndPublishAvatar(AvatarDatabase.AvatarDatabaseEntry avatar)
         {
-            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "アバターを準備中...", 0.05f);
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, AcL10n.Tr("progress.build_publish.preparing"), 0.05f);
 
             if (!ChangeToActiveAvatar(avatar, out var avatarObject))
             {
@@ -532,20 +549,20 @@ namespace MitarashiDango.AvatarCatalog
             VRChatUtil.ClearVRCSDKIssues();
             VRChatUtil.InitializeRemoteConfig();
 
-            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "VRChat にログイン中...", 0.15f);
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, AcL10n.Tr("progress.build_publish.logging_in"), 0.15f);
 
             if (!await EnsureVRChatLoggedIn())
             {
                 return;
             }
 
-            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "SDK ビルダーを取得中...", 0.25f);
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, AcL10n.Tr("progress.build_publish.getting_builder"), 0.25f);
 
             if (!VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder))
             {
                 ShowError(
-                    "エラー",
-                    "VRChat SDK のアバタービルダーを取得できませんでした。VRChat SDK が正しくインストールされているか確認してください。");
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.cannot_get_sdk_builder"));
                 return;
             }
 
@@ -554,7 +571,7 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "アバター情報を取得中...", 0.35f);
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, AcL10n.Tr("progress.build_publish.getting_avatar_info"), 0.35f);
 
             var (resolved, vrcAvatar) = await TryResolveVRCAvatar(pipelineManager.blueprintId, avatar.avatarObjectName);
             if (!resolved)
@@ -562,7 +579,7 @@ namespace MitarashiDango.AvatarCatalog
                 return;
             }
 
-            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, "ライセンス規約を確認中...", 0.45f);
+            EditorUtility.DisplayProgressBar(BuildAndPublishProgressTitle, AcL10n.Tr("progress.build_publish.confirming_agreement"), 0.45f);
 
             if (!await ConfirmCopyrightAgreement(vrcAvatar.ID))
             {
@@ -578,7 +595,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 if (!await VRChatUtil.LogIn())
                 {
-                    ShowError("エラー", "VRChat アカウントでログインしてください。");
+                    ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.not_logged_in"));
                     return false;
                 }
                 return true;
@@ -586,16 +603,16 @@ namespace MitarashiDango.AvatarCatalog
             catch (VRChatSessionExpiredException ex)
             {
                 ShowError(
-                    "エラー",
-                    "VRChat のログインセッションが切れています。\nVRChat SDK のコントロールパネルから再度ログインしてください。",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.session_expired"),
                     ex);
                 return false;
             }
             catch (Exception ex)
             {
                 ShowError(
-                    "エラー",
-                    $"VRChat へのログイン中にエラーが発生しました。\n\n{ex.Message}",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.login_failed", ex.Message),
                     ex);
                 return false;
             }
@@ -610,16 +627,16 @@ namespace MitarashiDango.AvatarCatalog
             if (pipelineManager == null)
             {
                 ShowError(
-                    "エラー",
-                    $"アバター '{avatar.avatarObjectName}' に Pipeline Manager コンポーネントが見つかりませんでした。");
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.pipeline_manager_missing", avatar.avatarObjectName));
                 return false;
             }
 
             if (string.IsNullOrEmpty(pipelineManager.blueprintId))
             {
                 ShowError(
-                    "エラー",
-                    $"アバター '{avatar.avatarObjectName}' の Blueprint ID が設定されていません。VRChat SDK のコントロールパネルからアバター情報を設定してください。");
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.blueprint_id_missing", avatar.avatarObjectName));
                 return false;
             }
 
@@ -634,8 +651,8 @@ namespace MitarashiDango.AvatarCatalog
                 if (string.IsNullOrEmpty(vrcAvatar.ID))
                 {
                     ShowError(
-                        "エラー",
-                        $"アバター '{avatarDisplayName}' はまだ VRChat にアップロードされていません。先に VRChat SDK のコントロールパネルから初回アップロードを行ってください。");
+                        AcL10n.Tr("dialog.title.error"),
+                        AcL10n.Tr("error.avatar_not_uploaded", avatarDisplayName));
                     return (false, default);
                 }
                 return (true, vrcAvatar);
@@ -643,24 +660,24 @@ namespace MitarashiDango.AvatarCatalog
             catch (ApiErrorException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 ShowError(
-                    "エラー",
-                    $"アバター '{avatarDisplayName}' はまだ VRChat にアップロードされていません。先に VRChat SDK のコントロールパネルから初回アップロードを行ってください。",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.avatar_not_uploaded", avatarDisplayName),
                     ex);
                 return (false, default);
             }
             catch (ApiErrorException ex)
             {
                 ShowError(
-                    "エラー",
-                    $"アバター情報の取得に失敗しました。\nHTTPステータス: {(int)ex.StatusCode} ({ex.StatusCode})\n\n{ex.Message}",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.get_avatar_info_failed", (int)ex.StatusCode, ex.StatusCode, ex.Message),
                     ex);
                 return (false, default);
             }
             catch (TaskCanceledException ex)
             {
                 ShowError(
-                    "エラー",
-                    $"VRChat サーバーとの通信に失敗しました。接続を確認して再度お試しください。\n\n{ex.Message}",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.network_failure", ex.Message),
                     ex);
                 return (false, default);
             }
@@ -676,7 +693,11 @@ namespace MitarashiDango.AvatarCatalog
             // 同意ダイアログが進捗バーと重ならないよう一旦クリア
             EditorUtility.ClearProgressBar();
 
-            if (!EditorUtility.DisplayDialog("Confirm", VRCCopyrightAgreement.AgreementText, "OK", "Cancel"))
+            if (!EditorUtility.DisplayDialog(
+                AcL10n.Tr("dialog.title.confirm"),
+                VRCCopyrightAgreement.AgreementText,
+                AcL10n.Tr("dialog.button.ok"),
+                AcL10n.Tr("dialog.button.cancel")))
             {
                 return false;
             }
@@ -689,8 +710,8 @@ namespace MitarashiDango.AvatarCatalog
             catch (Exception ex)
             {
                 ShowError(
-                    "エラー",
-                    $"ライセンス規約への同意処理でエラーが発生しました。\n\n{ex.Message}",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.agreement_processing_failed", ex.Message),
                     ex);
                 return false;
             }
@@ -713,7 +734,7 @@ namespace MitarashiDango.AvatarCatalog
             // イベントハンドラでは共有状態の更新のみを行い、EditorUtility の API 呼び出しは
             // EditorApplication.update (必ずメインスレッド) 側に寄せる。
             var progressLock = new object();
-            var progressMessage = "ビルドを開始中...";
+            var progressMessage = AcL10n.Tr("progress.build_publish.starting_build");
             var progressValue = 0.50f;
             var progressDirty = true;
 
@@ -721,7 +742,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 lock (progressLock)
                 {
-                    progressMessage = $"ビルド中: {status}";
+                    progressMessage = AcL10n.Tr("progress.build_publish.building", status);
                     progressValue = BuildPhaseProgress;
                     progressDirty = true;
                 }
@@ -731,7 +752,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 lock (progressLock)
                 {
-                    progressMessage = $"アップロード中: {pg.status}";
+                    progressMessage = AcL10n.Tr("progress.build_publish.uploading", pg.status);
                     progressValue = UploadPhaseStart + Mathf.Clamp01(pg.percentage) * UploadPhaseRange;
                     progressDirty = true;
                 }
@@ -767,7 +788,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 EditorUtility.DisplayCancelableProgressBar(
                     BuildAndPublishProgressTitle,
-                    "ビルドを開始中...",
+                    AcL10n.Tr("progress.build_publish.starting_build"),
                     0.50f);
 
                 await builder.BuildAndUpload(avatarObject, vrcAvatar, cancellationToken: cts.Token);
@@ -780,43 +801,43 @@ namespace MitarashiDango.AvatarCatalog
             }
             catch (BuildBlockedException ex)
             {
-                ShowError("エラー", $"他の処理によりビルドが中断されました。\n\n{ex.Message}", ex);
+                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.build_blocked", ex.Message), ex);
             }
             catch (ValidationException ex)
             {
                 ShowError(
-                    "エラー",
-                    $"アバターのバリデーションに失敗しました。VRChat SDK のコントロールパネルでエラー内容を確認してください。\n\n{ex.Message}",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.validation_failed", ex.Message),
                     ex);
             }
             catch (OwnershipException ex)
             {
-                ShowError("エラー", "このアバターの所有者ではないため、アップロードできません。", ex);
+                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.not_owner"), ex);
             }
             catch (BundleExistsException ex)
             {
                 ShowError(
-                    "エラー",
-                    $"このアバターは既に同じ内容がアップロードされています。\n\n{ex.Message}",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.bundle_already_exists", ex.Message),
                     ex);
             }
             catch (UploadException ex)
             {
-                ShowError("エラー", $"アバターのアップロードに失敗しました。\n\n{ex.Message}", ex);
+                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.upload_failed", ex.Message), ex);
             }
             catch (BuilderException ex)
             {
-                ShowError("エラー", $"アバターのビルドに失敗しました。\n\n{ex.Message}", ex);
+                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.build_failed", ex.Message), ex);
             }
             catch (CopyrightOwnershipAgreementException ex)
             {
-                ShowError("エラー", $"ライセンス規約への同意が必要です。\n\n{ex.Message}", ex);
+                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.agreement_required", ex.Message), ex);
             }
             catch (Exception ex)
             {
                 ShowError(
-                    "エラー",
-                    $"アバターのビルドおよびアップロード中にエラーが発生しました。\n\n{ex.Message}",
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.build_upload_failed", ex.Message),
                     ex);
             }
             finally
@@ -829,7 +850,10 @@ namespace MitarashiDango.AvatarCatalog
             if (succeeded)
             {
                 EditorUtility.ClearProgressBar();
-                EditorUtility.DisplayDialog("情報", "アバターのビルドおよびアップロードが完了しました。", "OK");
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.info"),
+                    AcL10n.Tr("info.upload_completed"),
+                    AcL10n.Tr("dialog.button.ok"));
             }
         }
 
@@ -844,7 +868,7 @@ namespace MitarashiDango.AvatarCatalog
             {
                 Debug.LogError($"{title}: {message}");
             }
-            EditorUtility.DisplayDialog(title, message, "OK");
+            EditorUtility.DisplayDialog(title, message, AcL10n.Tr("dialog.button.ok"));
         }
 
         private void BuildAvatarCatalogDatabase(bool withRegenerateThumbnails = false)
@@ -869,14 +893,19 @@ namespace MitarashiDango.AvatarCatalog
 
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
-                EditorUtility.DisplayDialog("情報", "Play Mode実行中はアバターの切り替えは行えません", "OK");
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.info"),
+                    AcL10n.Tr("info.play_mode_cannot_switch"),
+                    AcL10n.Tr("dialog.button.ok"));
                 return false;
             }
 
             avatarObject = ChangeSelectingObject(avatar);
             if (avatarObject == null)
             {
-                ShowError("エラー", $"アバター '{avatar.avatarObjectName}' が存在するシーンを開けませんでした。");
+                ShowError(
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.scene_cannot_open", avatar.avatarObjectName));
                 return false;
             }
 

@@ -17,7 +17,7 @@ namespace MitarashiDango.AvatarCatalog
         {
         }
 
-        private const string ProgressBarTitle = "アバターデータベースを構築中";
+        private static string ProgressBarTitle => AcL10n.Tr("progress.build_avatar_database.title");
 
         /// <summary>
         /// アバターカタログデータベースと各種インデックスを構築する
@@ -57,7 +57,7 @@ namespace MitarashiDango.AvatarCatalog
 
                     if (EditorUtility.DisplayCancelableProgressBar(
                         ProgressBarTitle,
-                        $"シーンを処理中 ({sceneIndex + 1}/{totalScenes}): {displaySceneName}",
+                        AcL10n.Tr("progress.build_avatar_database.processing_scene", sceneIndex + 1, totalScenes, displaySceneName),
                         sceneProgress))
                     {
                         // シーン境界でキャンセルされたため、途中結果は保存せず終了する
@@ -79,7 +79,7 @@ namespace MitarashiDango.AvatarCatalog
                 }
 
                 // 不要となったファイルの削除
-                EditorUtility.DisplayProgressBar(ProgressBarTitle, "不要なファイルを整理中...", 0.93f);
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, AcL10n.Tr("progress.build_avatar_database.cleanup"), 0.93f);
                 CleanupFiles(previousAvatarDatabaseEntries, avatarDatabaseSources);
 
                 avatarCatalogDatabase.orderedScenes = sceneEntries;
@@ -87,11 +87,11 @@ namespace MitarashiDango.AvatarCatalog
                     .Select(source => source.GetAvatarDatabaseEntry())
                     .ToList();
 
-                EditorUtility.DisplayProgressBar(ProgressBarTitle, "データベースを保存中...", 0.96f);
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, AcL10n.Tr("progress.build_avatar_database.saving"), 0.96f);
                 AvatarDatabase.Save(avatarCatalogDatabase);
 
                 // 検索インデックスの最新化
-                EditorUtility.DisplayProgressBar(ProgressBarTitle, "検索インデックスを更新中...", 0.98f);
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, AcL10n.Tr("progress.build_avatar_database.refreshing_index"), 0.98f);
                 RefreshIndexes(avatarDatabaseSources.Select(source => source.GetAvatarSearchIndexSource()));
 
                 AssetDatabase.Refresh();

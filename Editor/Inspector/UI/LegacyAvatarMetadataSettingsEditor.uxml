@@ -1,6 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <uie:ObjectField label="Avatar Metadata" name="avatar-metadata" type="MitarashiDango.AvatarCatalog.Runtime.AvatarMetadata, com.matcha-soft.avatar-catalog.runtime" binding-path="avatarMetadata" />
-    <ui:HelpBox name="warning-message-helpbox" text="このアバターメタデータは別のアバターオブジェクトに設定されている可能性があります" message-type="warning" style="display: none" />
-    <ui:Button name="sync-avatar-global-id-button" text="アバターメタデータをこのアバターオブジェクトへ紐付ける" style="display: none" />
-    <ui:Button name="copy-avatar-metadata-file-button" text="アバターメタデータファイルを複製する" style="display: none" />
+    <uie:ObjectField label="@@field.legacy_metadata.avatar_metadata@@" name="avatar-metadata" type="MitarashiDango.AvatarCatalog.Runtime.AvatarMetadata, com.matcha-soft.avatar-catalog.runtime" binding-path="avatarMetadata" />
+    <ui:HelpBox name="warning-message-helpbox" text="@@helpbox.legacy_metadata.warning@@" message-type="warning" style="display: none" />
+    <ui:Button name="sync-avatar-global-id-button" text="@@button.legacy_metadata.sync@@" style="display: none" />
+    <ui:Button name="copy-avatar-metadata-file-button" text="@@button.legacy_metadata.copy@@" style="display: none" />
 </ui:UXML>
