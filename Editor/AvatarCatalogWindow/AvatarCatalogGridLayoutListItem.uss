@@ -6,13 +6,31 @@
 .avatar-thumbnail-image {
   --unity-image-size: scale-to-fit;
   background-color: rgba(255, 255, 255, 0.1);
+  border-width: 2px;
+  border-color: rgba(0, 0, 0, 0);
 }
 
 .avatar-name-label {
   margin-top: 5px;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  border-radius: 2px;
   font-size: 11px;
   -unity-text-align: middle-center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+.avatar-grid-item-selected .avatar-thumbnail-image {
+  background-color: rgba(58, 121, 187, 0.45);
+  border-color: rgb(88, 156, 224);
+}
+
+.avatar-grid-item-selected .avatar-name-label {
+  background-color: rgb(58, 121, 187);
+  color: rgb(232, 240, 252);
 }

@@ -50,6 +50,15 @@ namespace MitarashiDango.AvatarCatalog
         private int _currentMaxColumns = 1;
         private Dictionary<string, Texture2D> _thumbnailCache = new Dictionary<string, Texture2D>();
 
+        // アバターのマルチセレクト状態を avatarGlobalObjectId 単位で保持する。
+        // ListView 標準の selection は本ビューのレイアウトで使えないため独自管理している。
+        // 検索フィルタ変更時も選択状態を維持するため、フィルタ後に表示されないアバターも含めて保持する。
+        private HashSet<string> _selectedAvatarGlobalObjectIds = new HashSet<string>();
+        // Shift+クリックの範囲選択アンカー (avatarGlobalObjectId)。アンカーが現在のフィルタ結果に存在しない場合は単一選択にフォールバック。
+        private string _selectionAnchorAvatarGlobalObjectId;
+
+        private const string AvatarGridItemSelectedClass = "avatar-grid-item-selected";
+
         [MenuItem("Tools/Avatar Catalog/Avatar List")]
         public static void ShowWindow()
         {
@@ -95,7 +104,7 @@ namespace MitarashiDango.AvatarCatalog
             _gridItemSize = _preferences != null ? _preferences.avatarCatalogItemSize : Preferences.DefaultAvatarCatalogMaxItemSize;
         }
 
-        private bool EnsureSceneLoaded(string scenePath, OpenSceneMode mode, out Scene scene)
+        private bool EnsureSceneLoaded(string scenePath, OpenSceneMode mode, out Scene scene, BulkScenePolicy scenePolicy = BulkScenePolicy.Ask)
         {
             scene = SceneManager.GetSceneByPath(scenePath);
             if (scene.isLoaded)
@@ -103,12 +112,31 @@ namespace MitarashiDango.AvatarCatalog
                 return true;
             }
 
-            // Single モード切替で現在のシーンが閉じられる場合に備え、ユーザーに保存可否を確認する
+            // Single モード切替で現在のシーンが閉じられる場合の保存挙動はポリシーに従う
             if (mode == OpenSceneMode.Single)
             {
-                if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                switch (scenePolicy)
                 {
-                    return false;
+                    case BulkScenePolicy.Ask:
+                        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                        {
+                            return false;
+                        }
+                        break;
+                    case BulkScenePolicy.AutoSave:
+                        // パスが設定されている dirty なシーンのみ自動保存。未保存(無題)シーンは保存できないのでスキップ。
+                        for (var i = 0; i < SceneManager.sceneCount; i++)
+                        {
+                            var s = SceneManager.GetSceneAt(i);
+                            if (s.isDirty && !string.IsNullOrEmpty(s.path))
+                            {
+                                EditorSceneManager.SaveScene(s);
+                            }
+                        }
+                        break;
+                    case BulkScenePolicy.Discard:
+                        // 何もしない: OpenScene Single が現在のシーンを置き換える際に変更は破棄される
+                        break;
                 }
             }
 
@@ -116,7 +144,7 @@ namespace MitarashiDango.AvatarCatalog
             return scene.IsValid() && scene.isLoaded;
         }
 
-        private GameObject ChangeSelectingObject(AvatarDatabase.AvatarDatabaseEntry avatar)
+        private GameObject ChangeSelectingObject(AvatarDatabase.AvatarDatabaseEntry avatar, BulkScenePolicy scenePolicy = BulkScenePolicy.Ask)
         {
             if (!GlobalObjectId.TryParse(avatar.avatarGlobalObjectId, out var avatarGlobalObjectId))
             {
@@ -126,7 +154,7 @@ namespace MitarashiDango.AvatarCatalog
 
             var scenePath = AssetDatabase.GUIDToAssetPath(avatar.sceneAssetGuid);
 
-            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Single, out var scene))
+            if (!EnsureSceneLoaded(scenePath, OpenSceneMode.Single, out var scene, scenePolicy))
             {
                 return null;
             }
@@ -347,18 +375,33 @@ namespace MitarashiDango.AvatarCatalog
 
             var manipulator = new ContextualMenuManipulator(e =>
             {
-                if (gridItem.userData is AvatarDatabase.AvatarDatabaseEntry avatar)
+                if (gridItem.userData is not AvatarDatabase.AvatarDatabaseEntry avatar)
                 {
-                    e.menu.AppendAction(AcL10n.Tr("context.switch_active"), action => ChangeToActiveAvatar(avatar, out _));
-                    e.menu.AppendAction(AcL10n.Tr("context.generate_thumbnail"), action =>
-                    {
-                        GenerateAvatarThumbnail(avatar);
-                        ReloadAvatars();
-                    });
-                    e.menu.AppendAction(AcL10n.Tr("context.add_thumbnail_settings"), action => AddAvatarCatalogThumbnailSettingsComponent(avatar));
-                    e.menu.AppendAction(AcL10n.Tr("context.add_metadata"), action => AddAvatarMetadataComponent(avatar));
-                    e.menu.AppendAction(AcL10n.Tr("context.build_and_publish"), action => { _ = BuildAndPublishAvatarSafe(avatar); });
+                    return;
                 }
+
+                // 右クリック対象が選択集合に含まれており、かつ可視選択数が 2 件以上の場合のみ一括メニューを表示。
+                // 単一選択や、フィルタにより右クリック対象しか可視でない場合は通常メニューを優先する。
+                var visibleSelected = GetSelectedVisibleAvatars();
+                var isBulkContext = visibleSelected.Count >= 2
+                    && _selectedAvatarGlobalObjectIds.Contains(avatar.avatarGlobalObjectId);
+
+                if (isBulkContext)
+                {
+                    e.menu.AppendAction(AcL10n.Tr("context.bulk_build_and_publish", visibleSelected.Count),
+                        action => { _ = BulkBuildAndPublishAvatarsSafe(visibleSelected); });
+                    return;
+                }
+
+                e.menu.AppendAction(AcL10n.Tr("context.switch_active"), action => ChangeToActiveAvatar(avatar, out _));
+                e.menu.AppendAction(AcL10n.Tr("context.generate_thumbnail"), action =>
+                {
+                    GenerateAvatarThumbnail(avatar);
+                    ReloadAvatars();
+                });
+                e.menu.AppendAction(AcL10n.Tr("context.add_thumbnail_settings"), action => AddAvatarCatalogThumbnailSettingsComponent(avatar));
+                e.menu.AppendAction(AcL10n.Tr("context.add_metadata"), action => AddAvatarMetadataComponent(avatar));
+                e.menu.AppendAction(AcL10n.Tr("context.build_and_publish"), action => { _ = BuildAndPublishAvatarSafe(avatar); });
             });
             gridItem.AddManipulator(manipulator);
 
@@ -412,12 +455,18 @@ namespace MitarashiDango.AvatarCatalog
 
                     var label = gridItem.Q<Label>("avatar-name-label");
                     label.text = avatar.avatarObjectName;
+
+                    // 選択状態を視覚化 (再バインド時にもクラス状態を確実に同期)
+                    var isSelected = !string.IsNullOrEmpty(avatar.avatarGlobalObjectId)
+                        && _selectedAvatarGlobalObjectIds.Contains(avatar.avatarGlobalObjectId);
+                    gridItem.EnableInClassList(AvatarGridItemSelectedClass, isSelected);
                 }
                 else
                 {
                     // 末尾行のダミースロット
                     gridItem.userData = null;
                     gridItem.style.visibility = Visibility.Hidden;
+                    gridItem.EnableInClassList(AvatarGridItemSelectedClass, false);
                 }
 
                 col++;
@@ -434,6 +483,7 @@ namespace MitarashiDango.AvatarCatalog
                 {
                     image.image = null;
                 }
+                gridItem.EnableInClassList(AvatarGridItemSelectedClass, false);
             }
         }
 
@@ -623,20 +673,32 @@ namespace MitarashiDango.AvatarCatalog
             AvatarDatabase.AvatarDatabaseEntry avatar,
             out PipelineManager pipelineManager)
         {
+            if (TryValidateAvatarSetup(avatarObject, avatar, out pipelineManager, out var errorMessage))
+            {
+                return true;
+            }
+            ShowError(AcL10n.Tr("dialog.title.error"), errorMessage);
+            return false;
+        }
+
+        // ダイアログ表示を伴わない検証コア。一括処理時にエラーメッセージを集約するために使用する。
+        private static bool TryValidateAvatarSetup(
+            GameObject avatarObject,
+            AvatarDatabase.AvatarDatabaseEntry avatar,
+            out PipelineManager pipelineManager,
+            out string errorMessage)
+        {
+            errorMessage = null;
             pipelineManager = avatarObject.GetComponent<PipelineManager>();
             if (pipelineManager == null)
             {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.pipeline_manager_missing", avatar.avatarObjectName));
+                errorMessage = AcL10n.Tr("error.pipeline_manager_missing", avatar.avatarObjectName);
                 return false;
             }
 
             if (string.IsNullOrEmpty(pipelineManager.blueprintId))
             {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.blueprint_id_missing", avatar.avatarObjectName));
+                errorMessage = AcL10n.Tr("error.blueprint_id_missing", avatar.avatarObjectName);
                 return false;
             }
 
@@ -645,41 +707,39 @@ namespace MitarashiDango.AvatarCatalog
 
         private async Task<(bool ok, VRCAvatar vrcAvatar)> TryResolveVRCAvatar(string blueprintId, string avatarDisplayName)
         {
+            var (ok, vrcAvatar, errorMessage, exception) = await TryResolveVRCAvatarCore(blueprintId, avatarDisplayName);
+            if (!ok)
+            {
+                ShowError(AcL10n.Tr("dialog.title.error"), errorMessage, exception);
+            }
+            return (ok, vrcAvatar);
+        }
+
+        // ダイアログ表示を伴わないアバター情報取得コア。一括処理時にエラーメッセージを集約するために使用する。
+        private static async Task<(bool ok, VRCAvatar vrcAvatar, string errorMessage, Exception exception)> TryResolveVRCAvatarCore(
+            string blueprintId,
+            string avatarDisplayName)
+        {
             try
             {
                 var vrcAvatar = await VRCApi.GetAvatar(blueprintId, true);
                 if (string.IsNullOrEmpty(vrcAvatar.ID))
                 {
-                    ShowError(
-                        AcL10n.Tr("dialog.title.error"),
-                        AcL10n.Tr("error.avatar_not_uploaded", avatarDisplayName));
-                    return (false, default);
+                    return (false, default, AcL10n.Tr("error.avatar_not_uploaded", avatarDisplayName), null);
                 }
-                return (true, vrcAvatar);
+                return (true, vrcAvatar, null, null);
             }
             catch (ApiErrorException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.avatar_not_uploaded", avatarDisplayName),
-                    ex);
-                return (false, default);
+                return (false, default, AcL10n.Tr("error.avatar_not_uploaded", avatarDisplayName), ex);
             }
             catch (ApiErrorException ex)
             {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.get_avatar_info_failed", (int)ex.StatusCode, ex.StatusCode, ex.Message),
-                    ex);
-                return (false, default);
+                return (false, default, AcL10n.Tr("error.get_avatar_info_failed", (int)ex.StatusCode, ex.StatusCode, ex.Message), ex);
             }
             catch (TaskCanceledException ex)
             {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.network_failure", ex.Message),
-                    ex);
-                return (false, default);
+                return (false, default, AcL10n.Tr("error.network_failure", ex.Message), ex);
             }
         }
 
@@ -722,7 +782,44 @@ namespace MitarashiDango.AvatarCatalog
             GameObject avatarObject,
             VRCAvatar vrcAvatar)
         {
-            using var cts = new CancellationTokenSource();
+            var succeeded = false;
+            try
+            {
+                await ExecuteBuildAndUploadCore(builder, avatarObject, vrcAvatar, BuildAndPublishProgressTitle);
+                succeeded = true;
+            }
+            catch (OperationCanceledException)
+            {
+                // BuildAndPublishAvatarSafe 側で一元的にキャンセルメッセージを出す
+                throw;
+            }
+            catch (Exception ex)
+            {
+                ShowError(AcL10n.Tr("dialog.title.error"), GetBuildExceptionMessage(ex), ex);
+            }
+
+            if (succeeded)
+            {
+                EditorUtility.ClearProgressBar();
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.info"),
+                    AcL10n.Tr("info.upload_completed"),
+                    AcL10n.Tr("dialog.button.ok"));
+            }
+        }
+
+        // ビルド・アップロードのコア処理。進捗バー連携と SDK イベントハンドラの登録/解除のみを行い、
+        // ダイアログ表示はしない。例外はそのまま伝播させ、呼び出し側 (単発/一括) が処理する。
+        // progressTitle: 進捗バーに表示するタイトル (一括処理では "(i/N)" を含める)。
+        // externalCancellation: 外部からキャンセルしたい場合に渡す (バッチ全体の中断などに使う)。
+        private async Task ExecuteBuildAndUploadCore(
+            IVRCSdkAvatarBuilderApi builder,
+            GameObject avatarObject,
+            VRCAvatar vrcAvatar,
+            string progressTitle,
+            CancellationToken externalCancellation = default)
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalCancellation);
 
             // ビルドフェーズは 50% 地点に固定（SDK が進捗率を提供しないため）
             const float BuildPhaseProgress = 0.55f;
@@ -773,7 +870,7 @@ namespace MitarashiDango.AvatarCatalog
                     progressDirty = false;
                 }
 
-                if (EditorUtility.DisplayCancelableProgressBar(BuildAndPublishProgressTitle, message, value))
+                if (EditorUtility.DisplayCancelableProgressBar(progressTitle, message, value))
                 {
                     cts.Cancel();
                 }
@@ -783,62 +880,14 @@ namespace MitarashiDango.AvatarCatalog
             builder.OnSdkUploadProgress += onUploadProgress;
             EditorApplication.update += ProgressTick;
 
-            var succeeded = false;
             try
             {
                 EditorUtility.DisplayCancelableProgressBar(
-                    BuildAndPublishProgressTitle,
+                    progressTitle,
                     AcL10n.Tr("progress.build_publish.starting_build"),
                     0.50f);
 
                 await builder.BuildAndUpload(avatarObject, vrcAvatar, cancellationToken: cts.Token);
-                succeeded = true;
-            }
-            catch (OperationCanceledException)
-            {
-                // BuildAndPublishAvatarSafe 側で一元的にキャンセルメッセージを出す
-                throw;
-            }
-            catch (BuildBlockedException ex)
-            {
-                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.build_blocked", ex.Message), ex);
-            }
-            catch (ValidationException ex)
-            {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.validation_failed", ex.Message),
-                    ex);
-            }
-            catch (OwnershipException ex)
-            {
-                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.not_owner"), ex);
-            }
-            catch (BundleExistsException ex)
-            {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.bundle_already_exists", ex.Message),
-                    ex);
-            }
-            catch (UploadException ex)
-            {
-                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.upload_failed", ex.Message), ex);
-            }
-            catch (BuilderException ex)
-            {
-                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.build_failed", ex.Message), ex);
-            }
-            catch (CopyrightOwnershipAgreementException ex)
-            {
-                ShowError(AcL10n.Tr("dialog.title.error"), AcL10n.Tr("error.agreement_required", ex.Message), ex);
-            }
-            catch (Exception ex)
-            {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.build_upload_failed", ex.Message),
-                    ex);
             }
             finally
             {
@@ -846,15 +895,327 @@ namespace MitarashiDango.AvatarCatalog
                 builder.OnSdkBuildProgress -= onBuildProgress;
                 builder.OnSdkUploadProgress -= onUploadProgress;
             }
+        }
 
-            if (succeeded)
+        // ビルド・アップロード時の例外をローカライズ済みメッセージに変換する。
+        // 単発/一括処理の双方で同じ翻訳ロジックを使うために共通化している。
+        private static string GetBuildExceptionMessage(Exception ex)
+        {
+            return ex switch
             {
+                BuildBlockedException e => AcL10n.Tr("error.build_blocked", e.Message),
+                ValidationException e => AcL10n.Tr("error.validation_failed", e.Message),
+                OwnershipException => AcL10n.Tr("error.not_owner"),
+                BundleExistsException e => AcL10n.Tr("error.bundle_already_exists", e.Message),
+                UploadException e => AcL10n.Tr("error.upload_failed", e.Message),
+                BuilderException e => AcL10n.Tr("error.build_failed", e.Message),
+                CopyrightOwnershipAgreementException e => AcL10n.Tr("error.agreement_required", e.Message),
+                _ => AcL10n.Tr("error.build_upload_failed", ex.Message),
+            };
+        }
+
+        private enum BulkBuildResultStatus
+        {
+            Succeeded,
+            Failed,
+            Cancelled,
+            Skipped,
+        }
+
+        private struct BulkBuildResult
+        {
+            public AvatarDatabase.AvatarDatabaseEntry Avatar;
+            public BulkBuildResultStatus Status;
+            public string ErrorMessage;
+        }
+
+        // バッチ処理中のシーン切替時に未保存の変更をどう扱うかのポリシー。
+        // - Ask: Unity 標準の保存確認ダイアログを毎回表示 (単発処理と同等の挙動)
+        // - AutoSave: 開いている全シーンを自動保存してから切替
+        // - Discard: 保存ダイアログを出さずに OpenScene Single で破棄
+        private enum BulkScenePolicy
+        {
+            Ask,
+            AutoSave,
+            Discard,
+        }
+
+        // バッチ開始前にシーン保存ポリシーをユーザに確認する。
+        // DisplayDialogComplex の戻り値: 0=ok, 1=cancel(Esc)/中央, 2=alt
+        // Esc 押下時は Ask (= Unity 標準挙動 = 最も安全) にフォールバックさせるため、ok=AutoSave / cancel=Ask / alt=Discard の配置とする。
+        private static BulkScenePolicy AskBulkScenePolicy()
+        {
+            var choice = EditorUtility.DisplayDialogComplex(
+                AcL10n.Tr("dialog.title.bulk_scene_policy"),
+                AcL10n.Tr("dialog.message.bulk_scene_policy"),
+                AcL10n.Tr("dialog.button.bulk_scene_policy.auto_save"),
+                AcL10n.Tr("dialog.button.bulk_scene_policy.ask"),
+                AcL10n.Tr("dialog.button.bulk_scene_policy.discard"));
+
+            return choice switch
+            {
+                0 => BulkScenePolicy.AutoSave,
+                2 => BulkScenePolicy.Discard,
+                _ => BulkScenePolicy.Ask,
+            };
+        }
+
+        // 選択された複数アバターを順次ビルド＆アップロードするエントリポイント (例外集約)。
+        // - ログイン/Builder取得は最初に1回のみ
+        // - 著作権規約はバッチ開始時に1回まとめて確認
+        // - 各アバターの失敗はサマリに記録して継続
+        // - 進捗バーの Cancel で現在のアバターを即時中断し、残りはスキップ
+        private async Task BulkBuildAndPublishAvatarsSafe(IReadOnlyList<AvatarDatabase.AvatarDatabaseEntry> avatars)
+        {
+            if (avatars == null || avatars.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await BulkBuildAndPublishAvatars(avatars);
+            }
+            catch (Exception e)
+            {
+                // 想定外の例外 (前準備フェーズなど) を吸収して通知
+                Debug.LogError(e);
                 EditorUtility.ClearProgressBar();
                 EditorUtility.DisplayDialog(
-                    AcL10n.Tr("dialog.title.info"),
-                    AcL10n.Tr("info.upload_completed"),
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.unexpected_build_upload", e.Message),
                     AcL10n.Tr("dialog.button.ok"));
             }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
+        }
+
+        private async Task BulkBuildAndPublishAvatars(IReadOnlyList<AvatarDatabase.AvatarDatabaseEntry> avatars)
+        {
+            var totalCount = avatars.Count;
+            var results = new List<BulkBuildResult>(totalCount);
+
+            // Play Mode 中はシーン切替不可なのでバッチ開始前に弾く
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.info"),
+                    AcL10n.Tr("info.play_mode_cannot_switch"),
+                    AcL10n.Tr("dialog.button.ok"));
+                return;
+            }
+
+            // === 前準備 (バッチで1回) ===
+            VRChatUtil.ClearVRCSDKIssues();
+            VRChatUtil.InitializeRemoteConfig();
+
+            EditorUtility.DisplayProgressBar(
+                AcL10n.Tr("progress.build_publish.bulk_title", 0, totalCount),
+                AcL10n.Tr("progress.build_publish.logging_in"),
+                0.05f);
+
+            if (!await EnsureVRChatLoggedIn())
+            {
+                return;
+            }
+
+            if (!VRCSdkControlPanel.TryGetBuilder<IVRCSdkAvatarBuilderApi>(out var builder))
+            {
+                ShowError(
+                    AcL10n.Tr("dialog.title.error"),
+                    AcL10n.Tr("error.cannot_get_sdk_builder"));
+                return;
+            }
+
+            // 著作権規約への一括同意 (1回のみ)
+            EditorUtility.ClearProgressBar();
+            if (!EditorUtility.DisplayDialog(
+                AcL10n.Tr("dialog.title.confirm"),
+                AcL10n.Tr("confirm.bulk_agreement", totalCount, VRCCopyrightAgreement.AgreementText),
+                AcL10n.Tr("dialog.button.ok"),
+                AcL10n.Tr("dialog.button.cancel")))
+            {
+                return;
+            }
+
+            // バッチ中のシーン保存挙動をユーザに選択させる (Esc/閉じるは Ask にフォールバック)
+            var scenePolicy = AskBulkScenePolicy();
+
+            // === 逐次ループ ===
+            var cancelledMidBatch = false;
+            for (var i = 0; i < totalCount; i++)
+            {
+                var avatar = avatars[i];
+                var perAvatarTitle = AcL10n.Tr("progress.build_publish.bulk_title", i + 1, totalCount);
+
+                try
+                {
+                    EditorUtility.DisplayProgressBar(
+                        perAvatarTitle,
+                        AcL10n.Tr("progress.build_publish.bulk_preparing", avatar.avatarObjectName),
+                        0.05f);
+
+                    if (!TryChangeToActiveAvatar(avatar, out var avatarObject, out var sceneError, scenePolicy))
+                    {
+                        results.Add(new BulkBuildResult
+                        {
+                            Avatar = avatar,
+                            Status = BulkBuildResultStatus.Failed,
+                            ErrorMessage = sceneError ?? AcL10n.Tr("error.scene_cannot_open", avatar.avatarObjectName),
+                        });
+                        continue;
+                    }
+
+                    if (!TryValidateAvatarSetup(avatarObject, avatar, out var pipelineManager, out var validationError))
+                    {
+                        results.Add(new BulkBuildResult
+                        {
+                            Avatar = avatar,
+                            Status = BulkBuildResultStatus.Failed,
+                            ErrorMessage = validationError,
+                        });
+                        continue;
+                    }
+
+                    EditorUtility.DisplayProgressBar(
+                        perAvatarTitle,
+                        AcL10n.Tr("progress.build_publish.getting_avatar_info"),
+                        0.35f);
+
+                    var (resolved, vrcAvatar, resolveError, resolveException) =
+                        await TryResolveVRCAvatarCore(pipelineManager.blueprintId, avatar.avatarObjectName);
+                    if (!resolved)
+                    {
+                        if (resolveException != null)
+                        {
+                            Debug.LogError(resolveException);
+                        }
+                        results.Add(new BulkBuildResult
+                        {
+                            Avatar = avatar,
+                            Status = BulkBuildResultStatus.Failed,
+                            ErrorMessage = resolveError,
+                        });
+                        continue;
+                    }
+
+                    // 規約同意 (バッチ同意済みなのでダイアログは出さず、未同意のものだけ API 呼び出し)
+                    if (!VRChatUtil.AgreedContentThisSession.Contains(vrcAvatar.ID))
+                    {
+                        try
+                        {
+                            await VRChatUtil.AgreeCopyrightAgreement(vrcAvatar.ID);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError(ex);
+                            results.Add(new BulkBuildResult
+                            {
+                                Avatar = avatar,
+                                Status = BulkBuildResultStatus.Failed,
+                                ErrorMessage = AcL10n.Tr("error.agreement_processing_failed", ex.Message),
+                            });
+                            continue;
+                        }
+                    }
+
+                    await ExecuteBuildAndUploadCore(builder, avatarObject, vrcAvatar, perAvatarTitle);
+                    results.Add(new BulkBuildResult
+                    {
+                        Avatar = avatar,
+                        Status = BulkBuildResultStatus.Succeeded,
+                    });
+                }
+                catch (OperationCanceledException)
+                {
+                    results.Add(new BulkBuildResult
+                    {
+                        Avatar = avatar,
+                        Status = BulkBuildResultStatus.Cancelled,
+                    });
+                    // 残りは Skipped として記録
+                    for (var j = i + 1; j < totalCount; j++)
+                    {
+                        results.Add(new BulkBuildResult
+                        {
+                            Avatar = avatars[j],
+                            Status = BulkBuildResultStatus.Skipped,
+                        });
+                    }
+                    cancelledMidBatch = true;
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError(ex);
+                    results.Add(new BulkBuildResult
+                    {
+                        Avatar = avatar,
+                        Status = BulkBuildResultStatus.Failed,
+                        ErrorMessage = GetBuildExceptionMessage(ex),
+                    });
+                }
+            }
+
+            EditorUtility.ClearProgressBar();
+            ShowBulkBuildSummary(results, cancelledMidBatch);
+        }
+
+        private static void ShowBulkBuildSummary(IReadOnlyList<BulkBuildResult> results, bool cancelledMidBatch)
+        {
+            var succeeded = 0;
+            var failed = 0;
+            var skipped = 0;
+            foreach (var r in results)
+            {
+                switch (r.Status)
+                {
+                    case BulkBuildResultStatus.Succeeded: succeeded++; break;
+                    case BulkBuildResultStatus.Failed: failed++; break;
+                    case BulkBuildResultStatus.Cancelled:
+                    case BulkBuildResultStatus.Skipped: skipped++; break;
+                }
+            }
+
+            // 失敗・キャンセル・スキップしたアバターの一覧を本文に追記
+            var problemLines = results
+                .Where(r => r.Status != BulkBuildResultStatus.Succeeded)
+                .Select(r =>
+                {
+                    var statusLabel = r.Status switch
+                    {
+                        BulkBuildResultStatus.Cancelled => "[Cancelled]",
+                        BulkBuildResultStatus.Skipped => "[Skipped]",
+                        _ => "[Failed]",
+                    };
+                    return string.IsNullOrEmpty(r.ErrorMessage)
+                        ? $"- {statusLabel} {r.Avatar.avatarObjectName}"
+                        : $"- {statusLabel} {r.Avatar.avatarObjectName}: {r.ErrorMessage}";
+                })
+                .ToList();
+
+            string message;
+            if (problemLines.Count == 0)
+            {
+                message = AcL10n.Tr("info.bulk_completed", succeeded, failed, skipped);
+            }
+            else
+            {
+                message = AcL10n.Tr("info.bulk_completed_with_failures",
+                    succeeded, failed, skipped, string.Join("\n", problemLines));
+            }
+
+            if (cancelledMidBatch)
+            {
+                Debug.Log(AcL10n.Tr("info.bulk_cancelled_remaining", skipped));
+            }
+
+            EditorUtility.DisplayDialog(
+                AcL10n.Tr("dialog.title.info"),
+                message,
+                AcL10n.Tr("dialog.button.ok"));
         }
 
         private static void ShowError(string title, string message, Exception ex = null)
@@ -884,28 +1245,47 @@ namespace MitarashiDango.AvatarCatalog
         {
             BuildAvatarCatalogDatabase(withRegenerateThumbnails);
             _thumbnailCache.Clear();
+            // データベース再構築でアバターGUIDが変動する可能性があるため、選択状態は破棄する
+            _selectedAvatarGlobalObjectIds.Clear();
+            _selectionAnchorAvatarGlobalObjectId = null;
             RefreshGridView();
         }
 
         private bool ChangeToActiveAvatar(AvatarDatabase.AvatarDatabaseEntry avatar, out GameObject avatarObject)
         {
+            if (TryChangeToActiveAvatar(avatar, out avatarObject, out var errorMessage))
+            {
+                return true;
+            }
+            if (errorMessage != null)
+            {
+                ShowError(AcL10n.Tr("dialog.title.error"), errorMessage);
+            }
+            return false;
+        }
+
+        // ダイアログ表示を伴わないシーン切替コア。一括処理で個別にダイアログ表示せず、サマリへ集約するために使用する。
+        // 戻り値が false で errorMessage が null の場合は Play Mode (続行不能) を意味する。
+        // scenePolicy: バッチ時のシーン保存挙動。単発処理では Ask (= Unity 標準ダイアログ) を使う。
+        private bool TryChangeToActiveAvatar(
+            AvatarDatabase.AvatarDatabaseEntry avatar,
+            out GameObject avatarObject,
+            out string errorMessage,
+            BulkScenePolicy scenePolicy = BulkScenePolicy.Ask)
+        {
             avatarObject = null;
+            errorMessage = null;
 
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
-                EditorUtility.DisplayDialog(
-                    AcL10n.Tr("dialog.title.info"),
-                    AcL10n.Tr("info.play_mode_cannot_switch"),
-                    AcL10n.Tr("dialog.button.ok"));
+                errorMessage = AcL10n.Tr("info.play_mode_cannot_switch");
                 return false;
             }
 
-            avatarObject = ChangeSelectingObject(avatar);
+            avatarObject = ChangeSelectingObject(avatar, scenePolicy);
             if (avatarObject == null)
             {
-                ShowError(
-                    AcL10n.Tr("dialog.title.error"),
-                    AcL10n.Tr("error.scene_cannot_open", avatar.avatarObjectName));
+                errorMessage = AcL10n.Tr("error.scene_cannot_open", avatar.avatarObjectName);
                 return false;
             }
 
@@ -1070,10 +1450,87 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnAvatarItemClick(ClickEvent e, AvatarDatabase.AvatarDatabaseEntry avatar)
         {
-            if (e.button == (int)MouseButton.LeftMouse && e.clickCount == 2)
+            if (e.button != (int)MouseButton.LeftMouse)
+            {
+                return;
+            }
+
+            if (e.clickCount == 2)
             {
                 ChangeToActiveAvatar(avatar, out _);
+                return;
             }
+
+            HandleSelectionClick(avatar, e.ctrlKey || e.commandKey, e.shiftKey);
+        }
+
+        // Ctrl/Shift+クリックでマルチセレクトを構築する。
+        // - 修飾キーなし: 単一選択 (アンカー更新)
+        // - Ctrl: トグル選択 (アンカー更新)
+        // - Shift: 直前のアンカーから対象までを範囲選択 (アンカーは更新しない)
+        // 範囲はあくまで現在の _filteredAvatars 内のインデックスを基準とするため、フィルタ外の項目は範囲対象外。
+        private void HandleSelectionClick(AvatarDatabase.AvatarDatabaseEntry avatar, bool ctrl, bool shift)
+        {
+            if (string.IsNullOrEmpty(avatar.avatarGlobalObjectId))
+            {
+                return;
+            }
+
+            if (shift && !string.IsNullOrEmpty(_selectionAnchorAvatarGlobalObjectId))
+            {
+                var anchorIndex = _filteredAvatars.FindIndex(a => a.avatarGlobalObjectId == _selectionAnchorAvatarGlobalObjectId);
+                var targetIndex = _filteredAvatars.FindIndex(a => a.avatarGlobalObjectId == avatar.avatarGlobalObjectId);
+
+                if (anchorIndex < 0 || targetIndex < 0)
+                {
+                    // アンカーが現在のフィルタに存在しない場合は単一選択にフォールバック
+                    _selectedAvatarGlobalObjectIds.Clear();
+                    _selectedAvatarGlobalObjectIds.Add(avatar.avatarGlobalObjectId);
+                    _selectionAnchorAvatarGlobalObjectId = avatar.avatarGlobalObjectId;
+                }
+                else
+                {
+                    var start = Mathf.Min(anchorIndex, targetIndex);
+                    var end = Mathf.Max(anchorIndex, targetIndex);
+                    _selectedAvatarGlobalObjectIds.Clear();
+                    for (var i = start; i <= end; i++)
+                    {
+                        _selectedAvatarGlobalObjectIds.Add(_filteredAvatars[i].avatarGlobalObjectId);
+                    }
+                    // Shift+Click ではアンカーを更新しない (連続範囲拡張のため)
+                }
+            }
+            else if (ctrl)
+            {
+                // トグル: HashSet.Add は新規挿入時 true、既存時 false を返す
+                if (!_selectedAvatarGlobalObjectIds.Add(avatar.avatarGlobalObjectId))
+                {
+                    _selectedAvatarGlobalObjectIds.Remove(avatar.avatarGlobalObjectId);
+                }
+                _selectionAnchorAvatarGlobalObjectId = avatar.avatarGlobalObjectId;
+            }
+            else
+            {
+                _selectedAvatarGlobalObjectIds.Clear();
+                _selectedAvatarGlobalObjectIds.Add(avatar.avatarGlobalObjectId);
+                _selectionAnchorAvatarGlobalObjectId = avatar.avatarGlobalObjectId;
+            }
+
+            _avatarGridListView?.RefreshItems();
+        }
+
+        // 現在のフィルタ結果に表示されている選択中アバターを、表示順で返す。
+        // 一括ビルド時の対象集合を決定するために使用する (非表示アバターはビルド対象外)。
+        private List<AvatarDatabase.AvatarDatabaseEntry> GetSelectedVisibleAvatars()
+        {
+            if (_selectedAvatarGlobalObjectIds.Count == 0 || _filteredAvatars == null)
+            {
+                return new List<AvatarDatabase.AvatarDatabaseEntry>();
+            }
+
+            return _filteredAvatars
+                .Where(a => _selectedAvatarGlobalObjectIds.Contains(a.avatarGlobalObjectId))
+                .ToList();
         }
 
         private void OnRunInitialSetupButtonClick()
