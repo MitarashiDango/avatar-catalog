@@ -33,24 +33,25 @@ namespace MitarashiDango.AvatarCatalog
             _previewRenderUtility = new PreviewRenderUtility();
         }
 
-        ~AvatarRenderer()
-        {
-            Dispose();
-        }
-
         public void Dispose()
         {
-            if (_previewRenderUtility != null)
+            var previewRenderUtility = _previewRenderUtility;
+            if (previewRenderUtility == null)
             {
-                _previewRenderUtility.Cleanup();
-                _previewRenderUtility = null;
+                return;
             }
 
-            System.GC.SuppressFinalize(this);
+            _previewRenderUtility = null;
+            previewRenderUtility.Cleanup();
         }
 
         public Texture2D Render(GameObject avatarRootObject, CameraSetting cameraSetting, int width, int height, Dictionary<string, float> defaultBlendShapes, Dictionary<string, float> animationClipBlendShapes, bool allowHDR)
         {
+            if (_previewRenderUtility == null)
+            {
+                throw new System.ObjectDisposedException(nameof(AvatarRenderer));
+            }
+
             var format = allowHDR ? DefaultFormat.HDR : DefaultFormat.LDR;
             var renderTexture = new RenderTexture(width, height, RenderTextureDepthBits, format);
 
@@ -68,6 +69,11 @@ namespace MitarashiDango.AvatarCatalog
 
         public bool Render(GameObject avatarRootObject, CameraSetting cameraSetting, RenderTexture renderTexture, Dictionary<string, float> defaultBlendShapes, Dictionary<string, float> animationClipBlendShapes, bool allowHDR)
         {
+            if (_previewRenderUtility == null)
+            {
+                throw new System.ObjectDisposedException(nameof(AvatarRenderer));
+            }
+
             _previewRenderUtility.BeginPreview(new Rect(0, 0, renderTexture.width, renderTexture.height), GUIStyle.none);
 
             SetupDefaultLights();

@@ -55,6 +55,18 @@ namespace MitarashiDango.AvatarCatalog
             InitializeAvatarRenderer();
         }
 
+        private void OnDisable()
+        {
+            var avatarRenderer = _avatarRenderer;
+            if (avatarRenderer == null)
+            {
+                return;
+            }
+
+            _avatarRenderer = null;
+            avatarRenderer.Dispose();
+        }
+
         private void OnDestroy()
         {
             if (_cameraRotationField != null)
@@ -62,16 +74,11 @@ namespace MitarashiDango.AvatarCatalog
                 Undo.undoRedoPerformed -= UndoRedoCallback;
             }
 
+            // ドメイン再読み込み後も再利用するため、_texture はウィンドウを閉じるときだけ破棄する
             if (_texture != null)
             {
                 DestroyImmediate(_texture);
                 _texture = null;
-            }
-
-            if (_avatarRenderer != null)
-            {
-                _avatarRenderer.Dispose();
-                _avatarRenderer = null;
             }
         }
 
@@ -182,6 +189,11 @@ namespace MitarashiDango.AvatarCatalog
 
         private void UpdateAvatarThumbnailPreview()
         {
+            if (_avatarRenderer == null)
+            {
+                return;
+            }
+
             var cameraSetting = new AvatarRenderer.CameraSetting();
 
             if (_currentAvatarObject != null)
