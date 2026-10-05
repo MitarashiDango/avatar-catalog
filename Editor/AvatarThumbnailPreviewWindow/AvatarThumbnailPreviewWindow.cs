@@ -69,6 +69,8 @@ namespace MitarashiDango.AvatarCatalog
 
         private void OnDestroy()
         {
+            EditorSceneManager.sceneOpened -= OnSceneOpened;
+
             if (_cameraRotationField != null)
             {
                 Undo.undoRedoPerformed -= UndoRedoCallback;
