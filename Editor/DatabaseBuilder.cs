@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using MitarashiDango.AvatarCatalog.Runtime;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 
@@ -26,10 +27,7 @@ namespace MitarashiDango.AvatarCatalog
         /// <returns>完了した場合は true、キャンセルされた場合は false を返す</returns>
         public bool BuildAvatarCatalogDatabaseAndIndexes(bool withRegenerateThumbnails = false)
         {
-            // フォルダー作成
-            FolderUtil.CreateUserDataFolders();
-            FolderUtil.CreateCacheFolder();
-            FolderUtil.CreateAvatarThumbnailsCacheFolder();
+            CreateFolders();
 
             var avatarCatalogDatabase = AvatarDatabase.LoadOrCreateFile();
 
@@ -38,44 +36,13 @@ namespace MitarashiDango.AvatarCatalog
             var sceneEntries = new List<AvatarDatabase.SceneEntry>();
             var avatarDatabaseSources = new List<AvatarDatabaseSource>();
 
-            using var avatarRenderer = new AvatarRenderer();
-
             var allSceneAssetPaths = SceneProcessor.GetAllSceneAssetPaths().ToList();
-            var totalScenes = allSceneAssetPaths.Count;
-            // シーン走査に進捗の 90% を割り当て、残りの 10% を集計処理で消費する
-            const float SceneWalkPhaseRatio = 0.9f;
 
             try
             {
-                for (var sceneIndex = 0; sceneIndex < totalScenes; sceneIndex++)
+                if (!ProcessScenes(allSceneAssetPaths, previousAvatarDatabaseEntries, sceneEntries, avatarDatabaseSources, withRegenerateThumbnails))
                 {
-                    var sceneAssetPath = allSceneAssetPaths[sceneIndex];
-                    var displaySceneName = Path.GetFileNameWithoutExtension(sceneAssetPath);
-                    var sceneProgress = totalScenes > 0
-                        ? (float)sceneIndex / totalScenes * SceneWalkPhaseRatio
-                        : 0f;
-
-                    if (EditorUtility.DisplayCancelableProgressBar(
-                        ProgressBarTitle,
-                        AcL10n.Tr("progress.build_avatar_database.processing_scene", sceneIndex + 1, totalScenes, displaySceneName),
-                        sceneProgress))
-                    {
-                        // シーン境界でキャンセルされたため、途中結果は保存せず終了する
-                        return false;
-                    }
-
-                    var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(sceneAssetPath);
-                    SceneProcessor.ProcessSceneTemporarily(sceneAssetPath, (currentScene) =>
-                    {
-                        ProcessScene(
-                            sceneAsset,
-                            currentScene,
-                            avatarRenderer,
-                            previousAvatarDatabaseEntries,
-                            sceneEntries,
-                            avatarDatabaseSources,
-                            withRegenerateThumbnails);
-                    });
+                    return false;
                 }
 
                 // 不要となったファイルの削除
@@ -102,6 +69,192 @@ namespace MitarashiDango.AvatarCatalog
             {
                 EditorUtility.ClearProgressBar();
             }
+        }
+
+        /// <summary>
+        /// Assets フォルダー内の指定したシーンのアバターと検索インデックスを更新する
+        /// </summary>
+        /// <param name="sceneAssetPaths">更新対象のシーンアセットパス。ロードされていないシーンは一時的に開く</param>
+        /// <returns>完了した場合は true、キャンセルまたは更新できない場合は false を返す</returns>
+        public bool UpdateScenes(IEnumerable<string> sceneAssetPaths)
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorUtility.DisplayDialog(
+                    AcL10n.Tr("dialog.title.info"),
+                    AcL10n.Tr("info.play_mode_cannot_update_database"),
+                    AcL10n.Tr("dialog.button.ok"));
+                return false;
+            }
+
+            var allSceneAssetPaths = SceneProcessor.GetAllSceneAssetPaths().ToList();
+            var allSceneAssetPathSet = allSceneAssetPaths.ToHashSet();
+            var targetSceneAssetPaths = sceneAssetPaths.Where(allSceneAssetPathSet.Contains).Distinct().ToList();
+            if (targetSceneAssetPaths.Count == 0)
+            {
+                EditorUtility.DisplayDialog(AcL10n.Tr("dialog.title.info"), AcL10n.Tr("info.no_scenes_to_update"), AcL10n.Tr("dialog.button.ok"));
+                return false;
+            }
+
+            var avatarCatalogDatabase = AvatarDatabase.Load();
+            var avatarSearchIndex = AvatarSearchIndex.Load();
+            if (avatarCatalogDatabase == null || avatarSearchIndex == null)
+            {
+                EditorUtility.DisplayDialog(AcL10n.Tr("dialog.title.info"), AcL10n.Tr("info.avatar_database_rebuild_required"), AcL10n.Tr("dialog.button.ok"));
+                return false;
+            }
+
+            var loadedTargetScenes = targetSceneAssetPaths
+                .Select(path => EditorSceneManager.GetSceneByPath(path))
+                .Where(scene => scene.isLoaded)
+                .ToArray();
+            if (loadedTargetScenes.Any(scene => scene.isDirty))
+            {
+                if (!EditorSceneManager.SaveModifiedScenesIfUserWantsTo(loadedTargetScenes))
+                {
+                    return false;
+                }
+
+                // 「保存しない」でも true が返るため、未保存の変更が残っていれば更新しない
+                if (loadedTargetScenes.Any(scene => scene.isDirty))
+                {
+                    EditorUtility.DisplayDialog(AcL10n.Tr("dialog.title.info"), AcL10n.Tr("info.save_scenes_before_update"), AcL10n.Tr("dialog.button.ok"));
+                    return false;
+                }
+            }
+
+            CreateFolders();
+
+            var targetSceneGuids = targetSceneAssetPaths.Select(path => AssetDatabase.AssetPathToGUID(path)).ToHashSet();
+            var previousAvatarEntries = avatarCatalogDatabase.avatars
+                .Where(avatar => targetSceneGuids.Contains(avatar.sceneAssetGuid))
+                .ToDictionary(avatar => avatar.avatarGlobalObjectId);
+            var sceneEntries = new List<AvatarDatabase.SceneEntry>();
+            var avatarDatabaseSources = new List<AvatarDatabaseSource>();
+
+            try
+            {
+                if (!ProcessScenes(targetSceneAssetPaths, previousAvatarEntries, sceneEntries, avatarDatabaseSources, false))
+                {
+                    return false;
+                }
+
+                var (orderedScenes, avatars) = MergeSceneEntries(
+                    avatarCatalogDatabase, targetSceneGuids, sceneEntries, avatarDatabaseSources, allSceneAssetPaths);
+
+                // 検索インデックスの最新化
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, AcL10n.Tr("progress.build_avatar_database.refreshing_index"), 0.93f);
+                var avatarOrder = avatars
+                    .Select((avatar, index) => (avatar.avatarGlobalObjectId, index))
+                    .ToDictionary(item => item.avatarGlobalObjectId, item => item.index);
+                var updatedSearchIndexEntries = GenerateSearchIndexEntries(avatarDatabaseSources.Select(source => source.GetAvatarSearchIndexSource()));
+                var updatedAvatarIds = updatedSearchIndexEntries.Select(entry => entry.avatarGlobalObjectId).ToHashSet();
+                var searchIndexEntries = avatarSearchIndex.entries
+                    .Where(entry => avatarOrder.ContainsKey(entry.avatarGlobalObjectId) && !updatedAvatarIds.Contains(entry.avatarGlobalObjectId))
+                    .Concat(updatedSearchIndexEntries)
+                    .OrderBy(entry => avatarOrder[entry.avatarGlobalObjectId])
+                    .ToList();
+
+                // 不要となったファイルの削除
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, AcL10n.Tr("progress.build_avatar_database.cleanup"), 0.96f);
+                CleanupFiles(previousAvatarEntries, avatarDatabaseSources);
+
+                EditorUtility.DisplayProgressBar(ProgressBarTitle, AcL10n.Tr("progress.build_avatar_database.saving"), 0.98f);
+                avatarCatalogDatabase.orderedScenes = orderedScenes;
+                avatarCatalogDatabase.avatars = avatars;
+                AvatarDatabase.Save(avatarCatalogDatabase);
+
+                avatarSearchIndex.entries = searchIndexEntries;
+                AvatarSearchIndex.Save(avatarSearchIndex);
+
+                AssetDatabase.Refresh();
+                return true;
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
+        }
+
+        private (List<AvatarDatabase.SceneEntry> orderedScenes, List<AvatarDatabase.AvatarDatabaseEntry> avatars) MergeSceneEntries(
+            AvatarDatabase avatarCatalogDatabase,
+            HashSet<string> targetSceneGuids,
+            List<AvatarDatabase.SceneEntry> sceneEntries,
+            List<AvatarDatabaseSource> avatarDatabaseSources,
+            List<string> allSceneAssetPaths)
+        {
+            // 対象の絞り込みに使った全シーンの一覧から、全件再構築と同じ順序を取得する
+            var allSceneOrder = allSceneAssetPaths
+                .Select((path, index) => (guid: AssetDatabase.AssetPathToGUID(path), index))
+                .ToDictionary(item => item.guid, item => item.index);
+            var orderedScenes = avatarCatalogDatabase.orderedScenes
+                .Where(scene => !targetSceneGuids.Contains(scene.sceneAssetGuid))
+                .Concat(sceneEntries)
+                .OrderBy(scene => allSceneOrder.TryGetValue(scene.sceneAssetGuid, out var index) ? index : int.MaxValue)
+                .ToList();
+
+            var sceneOrder = orderedScenes
+                .Select((scene, index) => (scene.sceneAssetGuid, index))
+                .ToDictionary(item => item.sceneAssetGuid, item => item.index);
+            // OrderBy は同じシーン内の順序を保つため、抽出時のルートオブジェクト順を維持できる
+            var avatars = avatarCatalogDatabase.avatars
+                .Where(avatar => !targetSceneGuids.Contains(avatar.sceneAssetGuid))
+                .Concat(avatarDatabaseSources.Select(source => source.GetAvatarDatabaseEntry()))
+                .OrderBy(avatar => sceneOrder.TryGetValue(avatar.sceneAssetGuid, out var index) ? index : int.MaxValue)
+                .ToList();
+
+            return (orderedScenes, avatars);
+        }
+
+        private void CreateFolders()
+        {
+            FolderUtil.CreateUserDataFolders();
+            FolderUtil.CreateCacheFolder();
+            FolderUtil.CreateAvatarThumbnailsCacheFolder();
+        }
+
+        private bool ProcessScenes(
+            List<string> sceneAssetPaths,
+            Dictionary<string, AvatarDatabase.AvatarDatabaseEntry> previousAvatarDatabaseEntries,
+            List<AvatarDatabase.SceneEntry> sceneEntries,
+            List<AvatarDatabaseSource> avatarDatabaseSources,
+            bool withRegenerateThumbnails)
+        {
+            using var avatarRenderer = new AvatarRenderer();
+            var totalScenes = sceneAssetPaths.Count;
+            // シーン走査に進捗の 90% を割り当て、残りの 10% を集計処理で消費する
+            const float SceneWalkPhaseRatio = 0.9f;
+
+            for (var sceneIndex = 0; sceneIndex < totalScenes; sceneIndex++)
+            {
+                var sceneAssetPath = sceneAssetPaths[sceneIndex];
+                var displaySceneName = Path.GetFileNameWithoutExtension(sceneAssetPath);
+                var sceneProgress = (float)sceneIndex / totalScenes * SceneWalkPhaseRatio;
+
+                if (EditorUtility.DisplayCancelableProgressBar(
+                    ProgressBarTitle,
+                    AcL10n.Tr("progress.build_avatar_database.processing_scene", sceneIndex + 1, totalScenes, displaySceneName),
+                    sceneProgress))
+                {
+                    // シーン境界でキャンセルされたため、途中結果は保存せず終了する
+                    return false;
+                }
+
+                var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(sceneAssetPath);
+                SceneProcessor.ProcessSceneTemporarily(sceneAssetPath, currentScene =>
+                {
+                    ProcessScene(
+                        sceneAsset,
+                        currentScene,
+                        avatarRenderer,
+                        previousAvatarDatabaseEntries,
+                        sceneEntries,
+                        avatarDatabaseSources,
+                        withRegenerateThumbnails);
+                });
+            }
+
+            return true;
         }
 
         private void ProcessScene(
@@ -226,10 +379,16 @@ namespace MitarashiDango.AvatarCatalog
         private void RefreshIndexes(IEnumerable<AvatarSearchIndexSource> searchIndexSources)
         {
             var avatarSearchIndex = AvatarSearchIndex.LoadOrCreateFile();
+            avatarSearchIndex.entries = GenerateSearchIndexEntries(searchIndexSources);
+            AvatarSearchIndex.Save(avatarSearchIndex);
+        }
+
+        private List<AvatarSearchIndex.AvatarSearchIndexEntry> GenerateSearchIndexEntries(IEnumerable<AvatarSearchIndexSource> searchIndexSources)
+        {
             var allAssetProductDetails = GetAllAssetProductDetails();
             var folderToProductDetails = BuildFolderToProductDetailsMap(allAssetProductDetails);
 
-            avatarSearchIndex.entries = searchIndexSources.Select(searchIndexSource =>
+            return searchIndexSources.Select(searchIndexSource =>
             {
                 // アバターオブジェクトが参照しているアセットの製品情報を自動検出する
                 var autoMatchedAssetProductDetails = GetReferencedAssetProductDetails(searchIndexSource.dependencyPaths, folderToProductDetails);
@@ -241,8 +400,6 @@ namespace MitarashiDango.AvatarCatalog
                       searchIndexSource, autoMatchedAssetProductDetails)
                 };
             }).ToList();
-
-            AvatarSearchIndex.Save(avatarSearchIndex);
         }
 
         private List<string> GenerateAvatarSearchIndexWords(AvatarSearchIndexSource searchIndexSource, IEnumerable<ExtractedAssetProductDetail> autoMatchedAssetProductDetails)

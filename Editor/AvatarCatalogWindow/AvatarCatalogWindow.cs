@@ -275,6 +275,7 @@ namespace MitarashiDango.AvatarCatalog
             var avatarCatalogMenu = header.Q<ToolbarMenu>("avatar-catalog-menu");
             avatarCatalogMenu.text = AcL10n.Tr("toolbar.menu");
             avatarCatalogMenu.menu.AppendAction(AcL10n.Tr("menu.update_avatar_database"), action => ReloadAvatarList());
+            avatarCatalogMenu.menu.AppendAction(AcL10n.Tr("menu.update_open_scenes"), action => UpdateOpenScenes());
             avatarCatalogMenu.menu.AppendAction(AcL10n.Tr("menu.update_avatar_database_with_thumbnails"), action => ReloadAvatarList(true));
 
             var resizeGridItemSlider = footer.Q<Slider>("resize-grid-item-slider");
@@ -1248,6 +1249,34 @@ namespace MitarashiDango.AvatarCatalog
             // データベース再構築でアバターGUIDが変動する可能性があるため、選択状態は破棄する
             _selectedAvatarGlobalObjectIds.Clear();
             _selectionAnchorAvatarGlobalObjectId = null;
+            RefreshGridView();
+        }
+
+        private void UpdateOpenScenes()
+        {
+            var sceneAssetPaths = Enumerable.Range(0, SceneManager.sceneCount)
+                .Select(index => SceneManager.GetSceneAt(index))
+                .Where(scene => scene.isLoaded)
+                .Select(scene => scene.path)
+                .ToList();
+
+            var databaseBuilder = new DatabaseBuilder();
+            if (!databaseBuilder.UpdateScenes(sceneAssetPaths))
+            {
+                return;
+            }
+
+            _avatarCatalogDatabase = AvatarDatabase.Load();
+            _avatarSearchIndex = AvatarSearchIndex.Load();
+            _thumbnailCache.Clear();
+
+            var existingAvatarIds = _avatarCatalogDatabase.avatars.Select(avatar => avatar.avatarGlobalObjectId).ToHashSet();
+            _selectedAvatarGlobalObjectIds.IntersectWith(existingAvatarIds);
+            if (!existingAvatarIds.Contains(_selectionAnchorAvatarGlobalObjectId))
+            {
+                _selectionAnchorAvatarGlobalObjectId = null;
+            }
+
             RefreshGridView();
         }
 
